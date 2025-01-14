@@ -308,4 +308,95 @@ function saveUploadedPhoto($file, $patientId) {
         }
         return false;
     }
+}
+
+function createAppointmentSeries($db, $patientId, $startDate, $startTime) {
+    try {
+        // Şablonları getir
+        $stmt = $db->query("SELECT * FROM randevu_sablonlari ORDER BY SIRA ASC");
+        $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Ana randevu ID'sini tutacak değişken
+        $mainAppointmentId = null;
+        
+        foreach ($templates as $index => $template) {
+            // POST'tan gelen tarih ve saati kullan
+            $appointmentDate = $_POST['appointment_dates'][$index] ?? $startDate;
+            $appointmentTime = $_POST['appointment_times'][$index] ?? $startTime;
+            
+            // Randevu tarih ve saatini birleştir
+            $appointmentDateTime = $appointmentDate . ' ' . $appointmentTime;
+            
+            // Randevuyu kaydet
+            $stmt = $db->prepare("INSERT INTO randevular (
+                HASTA_ID, 
+                TARIH, 
+                DURUM, 
+                NOTLAR,
+                SABLON_ID,
+                ANA_RANDEVU_ID,
+                CREATED_AT
+            ) VALUES (
+                :hasta_id,
+                :tarih,
+                'bekliyor',
+                :notlar,
+                :sablon_id,
+                :ana_randevu_id,
+                NOW()
+            )");
+            
+            $params = [
+                ':hasta_id' => $patientId,
+                ':tarih' => $appointmentDateTime,
+                ':notlar' => $template['ISLEM_ADI'],
+                ':sablon_id' => $template['ID'],
+                ':ana_randevu_id' => $mainAppointmentId
+            ];
+            
+            $stmt->execute($params);
+            
+            if ($mainAppointmentId === null) {
+                $mainAppointmentId = $db->lastInsertId();
+                $stmt = $db->prepare("UPDATE randevular SET ANA_RANDEVU_ID = :id WHERE ID = :id");
+                $stmt->execute([':id' => $mainAppointmentId]);
+            }
+        }
+        
+        return true;
+    } catch (Exception $e) {
+        error_log($e->getMessage());
+        return false;
+    }
+}
+
+function createAppointment($db, $patientId, $date, $time, $isRecurring = false) {
+    try {
+        if ($isRecurring) {
+            return createAppointmentSeries($db, $patientId, $date, $time);
+        } else {
+            // Tek randevu oluştur
+            $appointmentDateTime = $date . ' ' . $time;
+            
+            $stmt = $db->prepare("INSERT INTO randevular (
+                HASTA_ID, 
+                TARIH, 
+                DURUM,
+                CREATED_AT
+            ) VALUES (
+                :hasta_id,
+                :tarih,
+                'bekliyor',
+                NOW()
+            )");
+            
+            return $stmt->execute([
+                ':hasta_id' => $patientId,
+                ':tarih' => $appointmentDateTime
+            ]);
+        }
+    } catch (Exception $e) {
+        error_log($e->getMessage());
+        return false;
+    }
 } 

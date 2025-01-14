@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS `randevular` (
   `TEKRAR` enum('yok','gunluk','haftalik','aylik') NOT NULL DEFAULT 'yok',
   `TEKRAR_SAYISI` int DEFAULT NULL,
   `TEKRAR_BITIS` date DEFAULT NULL,
+  `SABLON_ID` int(11) DEFAULT NULL,
+  `ANA_RANDEVU_ID` bigint(20) DEFAULT NULL,
   PRIMARY KEY (`ID`),
   KEY `HASTA_ID` (`HASTA_ID`),
   CONSTRAINT `randevular_ibfk_1` FOREIGN KEY (`HASTA_ID`) REFERENCES `hastalar` (`ID`)
@@ -104,3 +106,25 @@ DELETE FROM `kullanicilar`;
 INSERT INTO `kullanicilar` (`AD_SOYAD`, `EMAIL`, `SIFRE`, `ROL_ID`, `DURUM`) VALUES
 ('Admin', 'admin', '$2y$10$YourNewHashHere', 
 (SELECT ID FROM roller WHERE ROL_ADI = 'doktor'), 'aktif');
+
+-- Randevu şablonları için tablo
+CREATE TABLE IF NOT EXISTS `randevu_sablonlari` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `ISLEM_ADI` varchar(100) NOT NULL,
+  `GUN` int(11) NOT NULL,
+  `SURE` int(11) DEFAULT 45,
+  `SIRA` int(11) NOT NULL,
+  PRIMARY KEY (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Şablon verilerini ekle
+INSERT INTO `randevu_sablonlari` (`ISLEM_ADI`, `GUN`, `SURE`, `SIRA`) VALUES
+('İşlem Tarihi', 1, 45, 1),
+('İlk Yıkama', 3, 45, 2),
+('Kabuk Alımı', 10, 45, 3),
+('Prp', 31, 45, 4),
+('Prp', 52, 45, 5),
+('Prp', 73, 45, 6),
+('Prp', 94, 45, 7),
+('Prp', 115, 45, 8),
+('Prp', 136, 45, 9);

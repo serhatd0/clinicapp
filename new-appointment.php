@@ -5,89 +5,27 @@ require_once 'includes/functions.php';
 $database = new Database();
 $db = $database->connect();
 
-$success_message = '';
-$error_messages = [];
-
 // Hasta listesini getir
 $stmt = $db->query("SELECT ID, AD_SOYAD FROM hastalar ORDER BY AD_SOYAD ASC");
 $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Şablonları getir
+$stmt = $db->query("SELECT * FROM randevu_sablonlari ORDER BY SIRA ASC");
+$templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         $hastaId = $_POST['patient_id'];
-        $tarih = $_POST['appointment_date'] . ' ' . $_POST['appointment_time'];
-        $tekrar = $_POST['repeat_type'] ?? 'yok';
-        $tekrarSayisi = !empty($_POST['repeat_count']) ? $_POST['repeat_count'] : null;
-        $tekrarBitis = !empty($_POST['repeat_until']) ? $_POST['repeat_until'] : null;
-        $notlar = $_POST['notes'] ?? '';
-
-        // Randevu çakışması kontrolü
-        $stmt = $db->prepare("SELECT COUNT(*) FROM randevular WHERE TARIH = :tarih AND DURUM != 'iptal'");
-        $stmt->execute([':tarih' => $tarih]);
-        $randevuSayisi = $stmt->fetchColumn();
-
-        if ($randevuSayisi > 0) {
-            throw new Exception("Bu saatte başka bir randevu bulunmaktadır.");
+        $tarih = $_POST['appointment_date'];
+        $saat = $_POST['appointment_time'];
+        $isRecurring = isset($_POST['is_recurring']) && $_POST['is_recurring'] == '1';
+        
+        if (createAppointment($db, $hastaId, $tarih, $saat, $isRecurring)) {
+            header('Location: appointments.php?message=created');
+            exit;
+        } else {
+            throw new Exception("Randevu oluşturulurken bir hata oluştu.");
         }
-
-        // Ana randevuyu ekle
-        $stmt = $db->prepare("INSERT INTO randevular (HASTA_ID, TARIH, DURUM, NOTLAR, TEKRAR, TEKRAR_SAYISI, TEKRAR_BITIS) 
-                             VALUES (:hasta_id, :tarih, 'bekliyor', :notlar, :tekrar, :tekrar_sayisi, :tekrar_bitis)");
-        
-        $params = [
-            ':hasta_id' => $hastaId,
-            ':tarih' => $tarih,
-            ':notlar' => $notlar,
-            ':tekrar' => $tekrar,
-            ':tekrar_sayisi' => $tekrarSayisi,
-            ':tekrar_bitis' => $tekrarBitis
-        ];
-        
-        $stmt->execute($params);
-
-        // Tekrarlanan randevuları ekle
-        if ($tekrar !== 'yok' && $tekrarSayisi > 0) {
-            $baseDate = new DateTime($tarih);
-            
-            for ($i = 1; $i <= $tekrarSayisi; $i++) {
-                switch ($tekrar) {
-                    case 'gunluk':
-                        $baseDate->modify('+1 day');
-                        break;
-                    case 'haftalik':
-                        $baseDate->modify('+1 week');
-                        break;
-                    case 'aylik':
-                        $baseDate->modify('+1 month');
-                        break;
-                }
-
-                // Bitiş tarihini kontrol et
-                if ($tekrarBitis && $baseDate->format('Y-m-d') > $tekrarBitis) {
-                    break;
-                }
-
-                $yeniTarih = $baseDate->format('Y-m-d H:i:s');
-                
-                // Çakışma kontrolü
-                $stmt = $db->prepare("SELECT COUNT(*) FROM randevular WHERE TARIH = :tarih AND DURUM != 'iptal'");
-                $stmt->execute([':tarih' => $yeniTarih]);
-                if ($stmt->fetchColumn() == 0) {
-                    $stmt = $db->prepare("INSERT INTO randevular (HASTA_ID, TARIH, DURUM, NOTLAR) 
-                                        VALUES (:hasta_id, :tarih, 'bekliyor', :notlar)");
-                    $stmt->execute([
-                        ':hasta_id' => $hastaId,
-                        ':tarih' => $yeniTarih,
-                        ':notlar' => $notlar
-                    ]);
-                }
-            }
-        }
-
-        // Başarılı mesajıyla appointments.php'ye yönlendir
-        header('Location: appointments.php?message=created');
-        exit;
-        
     } catch (Exception $e) {
         $error_messages[] = $e->getMessage();
     }
@@ -103,38 +41,90 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        .appointment-preview {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .preview-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #28a745;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .preview-date {
+            min-width: 100px;
+            font-weight: 500;
+        }
+        
+        .preview-time {
+            min-width: 70px;
+            color: #28a745;
+        }
+        
+        .preview-service {
+            flex: 1;
+            color: #495057;
+        }
+        
+        .preview-warning {
+            color: #dc3545;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .preview-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #28a745;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .preview-date-time {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .preview-date-time input,
+        .preview-date-time select {
+            width: auto;
+        }
+        
+        .appointment-date,
+        .appointment-time {
+            padding: 4px 8px;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
     
-    <div id="alertContainer"></div>
-    
-    <?php if ($success_message || !empty($error_messages)): ?>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            <?php if ($success_message): ?>
-                showAlert('<?php echo $success_message; ?>', 'success');
-            <?php endif; ?>
-            
-            <?php if (!empty($error_messages)): ?>
-                showAlert('<?php echo implode("<br>", $error_messages); ?>', 'danger');
-            <?php endif; ?>
-        });
-    </script>
-    <?php endif; ?>
-
     <div class="container py-4 content-area">
         <div class="row justify-content-center">
-            <div class="col-md-8 col-lg-6">
+            <div class="col-md-8">
                 <div class="form-container">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="form-title mb-0">Yeni Randevu</h2>
+                        <h2 class="form-title mb-0">Yeni Randevu Serisi</h2>
                         <a href="appointments.php" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left"></i> Geri
                         </a>
                     </div>
 
-                    <form method="POST" action="" class="needs-validation" novalidate>
+                    <form method="POST" id="appointmentForm">
                         <div class="form-section">
                             <div class="mb-3">
                                 <label for="patient_id" class="form-label">Hasta</label>
@@ -149,14 +139,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
 
                             <div class="mb-3">
-                                <label for="appointment_date" class="form-label">Randevu Tarihi</label>
+                                <label for="appointment_date" class="form-label">İşlem Tarihi</label>
                                 <input type="date" class="form-control" id="appointment_date" 
-                                       name="appointment_date" required min="<?php echo date('Y-m-d'); ?>">
+                                       name="appointment_date" required min="<?php echo date('Y-m-d'); ?>"
+                                       onchange="updatePreview()">
                             </div>
 
                             <div class="mb-3">
                                 <label for="appointment_time" class="form-label">Randevu Saati</label>
-                                <select class="form-select" id="appointment_time" name="appointment_time" required>
+                                <select class="form-select" id="appointment_time" name="appointment_time" required
+                                        onchange="updatePreview()">
                                     <option value="">Saat seçiniz</option>
                                     <?php foreach (getAvailableTimeSlots() as $slot): ?>
                                         <option value="<?php echo $slot; ?>"><?php echo $slot; ?></option>
@@ -165,37 +157,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
 
                             <div class="mb-3">
-                                <label for="repeat_type" class="form-label">Tekrar</label>
-                                <select class="form-select" id="repeat_type" name="repeat_type">
-                                    <option value="yok">Tekrar Yok</option>
-                                    <option value="gunluk">Günlük</option>
-                                    <option value="haftalik">Haftalık</option>
-                                    <option value="aylik">Aylık</option>
-                                </select>
-                            </div>
-
-                            <div id="repeatOptions" style="display: none;">
-                                <div class="mb-3">
-                                    <label for="repeat_count" class="form-label">Tekrar Sayısı</label>
-                                    <input type="number" class="form-control" id="repeat_count" 
-                                           name="repeat_count" min="1" max="52">
+                                <label class="form-label">Tekrarlı Randevu</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="is_recurring" id="recurring_yes" value="1" onchange="togglePreview()">
+                                    <label class="form-check-label" for="recurring_yes">
+                                        Evet
+                                    </label>
                                 </div>
-
-                                <div class="mb-3">
-                                    <label for="repeat_until" class="form-label">Bitiş Tarihi</label>
-                                    <input type="date" class="form-control" id="repeat_until" 
-                                           name="repeat_until" min="<?php echo date('Y-m-d'); ?>">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="is_recurring" id="recurring_no" value="0" checked onchange="togglePreview()">
+                                    <label class="form-check-label" for="recurring_no">
+                                        Hayır
+                                    </label>
                                 </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="notes" class="form-label">Notlar</label>
-                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-save"></i> Randevu Oluştur
+                        <div class="appointment-preview" id="previewContainer" style="display: none;">
+                            <h4 class="mb-3">Randevu Serisi Önizleme</h4>
+                            <div id="previewList">
+                                <!-- JavaScript ile doldurulacak -->
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 mt-3">
+                            <i class="fas fa-calendar-check me-2"></i>Randevuları Oluştur
                         </button>
                     </form>
                 </div>
@@ -205,13 +191,91 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <?php include 'includes/nav.php'; ?>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Tekrar seçeneğine göre ek alanları göster/gizle
-        document.getElementById('repeat_type').addEventListener('change', function() {
-            const repeatOptions = document.getElementById('repeatOptions');
-            repeatOptions.style.display = this.value === 'yok' ? 'none' : 'block';
-        });
+        const templates = <?php echo json_encode($templates); ?>;
+        
+        function updatePreview() {
+            const isRecurring = document.querySelector('input[name="is_recurring"]:checked').value === "1";
+            const date = document.getElementById('appointment_date').value;
+            const time = document.getElementById('appointment_time').value;
+            const previewContainer = document.getElementById('previewContainer');
+            const previewList = document.getElementById('previewList');
+            
+            if (!date || !time || !isRecurring) {
+                previewContainer.style.display = 'none';
+                return;
+            }
+            
+            previewContainer.style.display = 'block';
+            previewList.innerHTML = '';
+            
+            templates.forEach((template, index) => {
+                const appointmentDate = new Date(date);
+                appointmentDate.setDate(appointmentDate.getDate() + template.GUN - 1);
+                
+                // Pazar günü kontrolü
+                while (appointmentDate.getDay() === 0) {
+                    appointmentDate.setDate(appointmentDate.getDate() + 1);
+                }
+                
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.innerHTML = `
+                    <div class="preview-service flex-grow-1">${template.ISLEM_ADI}</div>
+                    <div class="preview-date-time">
+                        <input type="date" 
+                               class="form-control form-control-sm appointment-date" 
+                               name="appointment_dates[${index}]" 
+                               value="${appointmentDate.toISOString().split('T')[0]}"
+                               min="${date}"
+                               onchange="checkSunday(this)">
+                        <select class="form-control form-control-sm appointment-time" 
+                                name="appointment_times[${index}]">
+                            ${generateTimeOptions(time)}
+                        </select>
+                    </div>
+                    <div class="preview-warning" style="display: none; color: #dc3545; font-size: 0.8rem;">
+                        Pazar günü seçilemez
+                    </div>
+                `;
+                
+                previewList.appendChild(div);
+            });
+        }
+
+        function generateTimeOptions(selectedTime) {
+            const times = [];
+            for (let hour = 9; hour < 18; hour++) {
+                for (let minute = 0; minute < 60; minute += 15) {
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    times.push(`<option value="${timeStr}" ${timeStr === selectedTime ? 'selected' : ''}>${timeStr}</option>`);
+                }
+            }
+            return times.join('');
+        }
+
+        function checkSunday(input) {
+            const date = new Date(input.value);
+            const warningDiv = input.parentElement.nextElementSibling;
+            
+            if (date.getDay() === 0) { // Pazar
+                warningDiv.style.display = 'block';
+                // Bir sonraki pazartesiye ayarla
+                date.setDate(date.getDate() + 1);
+                input.value = date.toISOString().split('T')[0];
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        }
+
+        function togglePreview() {
+            const isRecurring = document.querySelector('input[name="is_recurring"]:checked').value === "1";
+            if (isRecurring) {
+                updatePreview();
+            } else {
+                document.getElementById('previewContainer').style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html> 
