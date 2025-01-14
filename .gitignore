@@ -1,0 +1,58 @@
+# IDE ve Editör dosyaları
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Composer
+/vendor/
+composer.lock
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Çevre değişkenleri ve hassas bilgiler
+.env
+.env.local
+.env.*.local
+config.php
+
+# Cache ve log dosyaları
+/cache/*
+/logs/*
+*.log
+error_log
+debug.log
+
+# Yüklenen dosyalar ve medya
+/uploads/*
+/public/uploads/*
+/media/*
+!/uploads/.gitkeep
+!/public/uploads/.gitkeep
+
+# Geçici dosyalar
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Derleme çıktıları
+/build/
+/dist/
+/node_modules/
+
+# Test coverage
+/coverage/
+/phpunit.xml
+
+# Diğer
+*.bak
+*.zip
+*.tar
+*.gz
+*.rar

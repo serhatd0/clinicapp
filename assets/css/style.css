@@ -1,0 +1,790 @@
+.form-control:focus,
+.form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.floating-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    min-width: 300px;
+    max-width: 100%;
+    animation: slideIn 0.5s ease-in-out;
+}
+
+@keyframes slideIn {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.alert-fade-out {
+    animation: fadeOut 0.5s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+body {
+    background-color: #f8f9fa;
+}
+
+.form-container {
+    background-color: #fff;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 25px 15px;
+    margin: 0;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .form-container {
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        padding: 25px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+}
+
+.form-title {
+    color: #28a745;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+    padding: 0 15px;
+}
+
+.form-section {
+    background-color: #fff;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    border-left: none;
+    border-right: none;
+    margin-left: -15px;
+    margin-right: -15px;
+}
+
+.form-section-title {
+    color: #495057;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    padding: 0 5px;
+}
+
+.form-control, .form-select {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    min-height: 45px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
+}
+
+.form-check-input {
+    width: 1.2em;
+    height: 1.2em;
+    margin-top: 0.2em;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    
+    .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    .col-md-8, .col-lg-6 {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .form-section {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        margin-left: -15px;
+        margin-right: -15px;
+        padding: 15px;
+    }
+
+    .input-group {
+        gap: 5px;
+    }
+
+    .input-group .form-control {
+        min-height: 45px;
+    }
+
+    .input-group .btn {
+        padding: 10px 15px;
+        height: 45px;
+    }
+}
+
+@media (max-width: 768px) {
+    .floating-alert {
+        width: calc(100% - 20px);
+        right: 10px;
+        top: 10px;
+    }
+}
+
+.btn-submit {
+    padding: 12px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    margin: 15px 0;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+}
+
+.section-divider {
+    height: 1px;
+    background-color: #e9ecef;
+    margin: 25px 0;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: row !important;
+    gap: 10px;
+}
+
+.input-group .form-control {
+    flex: 1;
+    margin-bottom: 0 !important;
+}
+
+.input-group .btn {
+    width: auto !important;
+    white-space: nowrap;
+}
+
+/* Mobile Navigation Bar */
+.mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    display: block;
+    padding: 10px 0;
+}
+
+.nav-items {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: #6c757d;
+    font-size: 0.8rem;
+    padding: 5px;
+}
+
+.nav-item i {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+}
+
+.nav-item.active {
+    color: #28a745;
+}
+
+.nav-item:hover {
+    color: #28a745;
+    text-decoration: none;
+}
+
+/* Content area padding for mobile */
+.content-area {
+    padding-bottom: 80px !important;
+}
+
+@media (max-width: 768px) {
+    .mobile-nav {
+        display: block;
+    }
+}
+
+/* Liste görünümü için stiller */
+.patient-list {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.patient-item {
+    background: #fff;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.patient-info {
+    padding: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.patient-info:hover {
+    background-color: #f8f9fa;
+}
+
+.patient-name {
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 5px;
+}
+
+.patient-details {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.patient-actions {
+    display: none;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.patient-actions.show {
+    display: flex;
+}
+
+.action-button {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background: #fff;
+    color: #6c757d;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.action-button i {
+    font-size: 1.2rem;
+}
+
+.action-button span {
+    font-size: 0.8rem;
+}
+
+.action-button:hover {
+    background: #28a745;
+    color: #fff;
+    text-decoration: none;
+}
+
+.search-bar {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    z-index: 100;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 25px;
+    padding-left: 40px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+/* Randevu takvimi stilleri */
+.calendar-container {
+    background: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.appointment-list {
+    margin-top: 15px;
+}
+
+.appointment-item {
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+}
+
+.appointment-time {
+    min-width: 100px;
+    font-weight: 600;
+}
+
+.appointment-patient {
+    flex: 1;
+}
+
+.appointment-status {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-confirmed {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Ayarlar sayfası stilleri */
+.settings-list {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.settings-item {
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.settings-item:hover {
+    background: #f8f9fa;
+}
+
+.settings-icon {
+    color: #6c757d;
+    margin-right: 15px;
+}
+
+/* Yükleniyor animasyonu */
+.patient-list.loading {
+    position: relative;
+    min-height: 200px;
+}
+
+.patient-list.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #28a745;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Modal Stilleri */
+.modal-content {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-title {
+    font-weight: 600;
+    color: #212529;
+}
+
+.modal .btn-close:focus {
+    box-shadow: none;
+}
+
+.modal .text-danger {
+    font-size: 0.9rem;
+}
+
+.modal .fas {
+    margin-right: 5px;
+}
+
+/* Dropdown menü stilleri */
+.dropdown-menu {
+    z-index: 1021;
+    margin: 0;
+    padding: 8px 0;
+    border: none;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.2);
+    border-radius: 10px;
+}
+
+.dropdown-item {
+    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+    color: #6c757d;
+}
+
+.dropdown-item:hover i {
+    color: #28a745;
+}
+
+/* Mobil görünümde dropdown pozisyonu */
+@media (max-width: 1366px) {
+    .dropdown {
+        position: relative !important;
+    }
+    
+    .dropdown-menu {
+        position: absolute !important;
+        bottom: 100% !important;
+        top: auto !important;
+        right: 0 !important;
+        left: auto !important;
+        transform: none !important;
+        min-width: 200px;
+        border-radius: 10px;
+        margin-bottom: 5px;
+    }
+
+    .dropdown-item {
+        padding: 12px 15px;
+        font-size: 1rem;
+    }
+    
+    /* Mobile nav'ın üzerinde görünmesi için */
+    .patient-item {
+        position: relative;
+        z-index: 1022;
+    }
+}
+
+/* Masaüstü görünümde dropdown pozisyonu */
+@media (min-width: 1367px) {
+    .dropdown {
+        position: relative !important;
+    }
+    
+    .dropdown-menu {
+        position: absolute !important;
+        bottom: 100% !important;
+        top: auto !important;
+        right: 0 !important;
+        left: auto !important;
+        transform: none !important;
+        min-width: 200px;
+        margin-bottom: 5px;
+    }
+}
+
+/* Desktop Header Styles */
+.desktop-header {
+    display: none;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar-brand {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+.navbar-brand i {
+    font-size: 1.8rem;
+}
+
+.nav-link {
+    padding: 0.8rem 1.2rem !important;
+    color: #6c757d !important;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-link i {
+    font-size: 1.1rem;
+}
+
+.nav-link:hover, .nav-link.active {
+    color: #28a745 !important;
+}
+
+/* Responsive Styles */
+@media (min-width: 1367px) { /* Sadece geniş masaüstü ekranlar */
+    .desktop-header {
+        display: block;
+    }
+    
+    .mobile-nav {
+        display: none !important;
+    }
+    
+    .content-area {
+        padding-bottom: 2rem !important;
+    }
+}
+
+/* Tablet ve mobil görünüm */
+@media (max-width: 1366px) { /* 1366px ve altı ekranlar için (tablet ve mobil) */
+    .desktop-header {
+        display: none !important;
+    }
+    
+    .mobile-nav {
+        display: block;
+    }
+    
+    .content-area {
+        padding-bottom: 80px !important;
+    }
+}
+
+/* Galeri Stilleri */
+.gallery-date-group {
+    background: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.gallery-date {
+    font-size: 1.2rem;
+    color: #495057;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.gallery-date i {
+    color: #28a745;
+    margin-right: 8px;
+}
+
+.gallery-item {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    /* Kare format için aspect ratio */
+    aspect-ratio: 1;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.gallery-item a {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Resmi kırpmadan doldur */
+    border-radius: 10px;
+    transition: transform 0.3s;
+}
+
+/* Hover efektleri */
+.gallery-item:hover img {
+    transform: scale(1.05);
+}
+
+.gallery-item-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 2;
+}
+
+.gallery-item:hover .gallery-item-overlay {
+    opacity: 1;
+}
+
+/* Fotoğraf çerçevesi efekti */
+.gallery-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 8px solid #fff;
+    border-radius: 10px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Lightbox özelleştirmeleri */
+.lb-outerContainer {
+    border-radius: 10px;
+}
+
+.lb-image {
+    border-radius: 8px;
+}
+
+/* Grid düzeni için boşluklar */
+.gallery-date-group .row {
+    margin: -8px;
+}
+
+.gallery-date-group .col-6,
+.gallery-date-group .col-md-4,
+.gallery-date-group .col-lg-3 {
+    padding: 8px;
+}
+
+/* Header dropdown stilleri */
+.dropdown-item {
+    padding: 8px 16px;
+}
+
+.dropdown-item i {
+    width: 20px;
+    text-align: center;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #dc3545;
+    color: white !important;
+}
+
+.navbar-brand img {
+    height: 55px;
+    width: auto;
+    transition: transform 0.2s ease;
+}
+
+.navbar-brand:hover img {
+    transform: scale(1.05);
+}
+
+/* Login sayfası için logo stili */
+.login-logo img {
+    height: 100px;
+    width: auto;
+    margin-bottom: 2.5rem;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.1));
+}
+
+/* Mobil cihazlar için responsive ayarlar */
+@media (max-width: 768px) {
+    .navbar-brand img {
+        height: 45px;
+    }
+    
+    .login-logo img {
+        height: 80px;
+    }
+}
+
