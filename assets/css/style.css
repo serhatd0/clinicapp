@@ -526,12 +526,98 @@ body {
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
     transition: all 0.3s ease;
     z-index: 1000;
+    text-decoration: none;
 }
 
 .new-appointment-btn:hover {
     transform: scale(1.1);
     background: #218838;
     color: white;
+    text-decoration: none;
+}
+
+.new-appointment-btn i {
+    font-size: 24px;
+    line-height: 1;
+}
+
+/* Mobil görünüm için yeni randevu butonu */
+@media (max-width: 767px) {
+    .new-appointment-btn {
+        bottom: auto;
+        top: 75%;
+        right: 15px;
+        width: 65px;
+        height: 65px;
+        z-index: 1001;
+        background: linear-gradient(45deg, #28a745, #34ce57);
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    }
+
+    .new-appointment-btn i {
+        font-size: 28px;
+    }
+
+    /* Mobil randevu ekleme formu */
+    .mobile-new-appointment {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 20px 20px 0 0;
+        padding: 20px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        z-index: 1002;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+    }
+
+    .mobile-new-appointment.show {
+        transform: translateY(0);
+    }
+
+    .mobile-new-appointment .form-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .mobile-new-appointment .form-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .mobile-new-appointment .close-btn {
+        border: none;
+        background: none;
+        color: #666;
+        font-size: 1.5rem;
+        padding: 5px;
+    }
+
+    .mobile-new-appointment .form-group {
+        margin-bottom: 15px;
+    }
+
+    .mobile-new-appointment label {
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 8px;
+    }
+
+    .mobile-new-appointment .submit-btn {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        background: #28a745;
+        color: white;
+        border: none;
+        font-weight: 500;
+        margin-top: 10px;
+    }
 }
 
 /* Ayarlar sayfası stilleri */
@@ -1119,43 +1205,43 @@ body {
     
     .mobile-appointments {
         display: block !important;
-        padding: 15px;
-        background: #f8f9fa;
+        padding: 0;
+        background: #fff;
         min-height: 100vh;
+        margin-top: -15px; /* Üst boşluğu kaldır */
     }
 
-    .mobile-date-group {
-        margin-bottom: 20px;
-    }
-
-    .mobile-date-header {
-        font-size: 1.1rem;
-        font-weight: 500;
-        color: #495057;
-        margin-bottom: 10px;
-        padding: 10px;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    .mobile-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: #fff;
+        padding: 15px;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+        border-bottom: 1px solid #eee;
     }
 
     .mobile-appointment-card {
         background: white;
-        border-radius: 10px;
         padding: 15px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 0;
+        border-radius: 0;
+        box-shadow: none;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 15px;
         border-left: 4px solid #28a745;
+        border-bottom: 1px solid #eee;
     }
 
     .mobile-appointment-time {
-        min-width: 90px;
+        min-width: 80px;
         font-size: 0.9rem;
-        font-weight: 600;
+        font-weight: 500;
         color: #28a745;
+        text-align: right;
     }
 
     .mobile-appointment-info {
@@ -1177,12 +1263,51 @@ body {
         padding-left: 10px;
     }
 
-    .btn-options {
-        border: none;
-        background: none;
-        padding: 5px;
-        color: #6c757d;
-        font-size: 1.2rem;
+    /* Tarih başlıkları */
+    .date-header {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        font-weight: 500;
+        color: #666;
+        border-bottom: 1px solid #eee;
+    }
+
+    /* Önceki/Sonraki ay gösterimi */
+    .month-divider {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        color: #666;
+        text-align: center;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    /* Container padding düzeltmesi */
+    .container-fluid {
+        padding: 0 !important;
+    }
+
+    .content-area {
+        padding: 0 !important;
+    }
+
+    /* Yeni randevu butonu pozisyonu */
+    .new-appointment-btn {
+        bottom: auto;
+        top: 80%;
+        right: 15px;
+        width: 65px;
+        height: 65px;
+        z-index: 1001; /* Mobile header'ın üstünde görünmesi için */
+    }
+
+    .new-appointment-btn i {
+        font-size: 1.5rem;
+    }
+
+    /* Mobile header için margin ekleyelim */
+    .mobile-header {
+        padding-right: 70px; /* Yeni randevu butonu için yer açıyoruz */
     }
 }
 
@@ -1223,5 +1348,200 @@ body {
         left: 67%;
         border-left: 2px solid #fff;
     }
+}
+
+/* Mobil görünüm için yeni stiller */
+@media (max-width: 767px) {
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px;
+        background: white;
+        margin: 0 0 15px 0;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .mobile-header h5 {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .mobile-header .btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .no-appointments {
+        text-align: center;
+        padding: 40px 20px;
+        background: white;
+        border-radius: 10px;
+        color: #6c757d;
+    }
+
+    .no-appointments i {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .no-appointments p {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .mobile-appointment-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        border-left: 4px solid #28a745;
+    }
+
+    .mobile-appointment-time {
+        min-width: 90px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #28a745;
+    }
+
+    .mobile-appointment-info {
+        flex: 1;
+    }
+
+    .mobile-appointment-patient {
+        font-weight: 500;
+        color: #212529;
+        margin-bottom: 2px;
+    }
+
+    .mobile-appointment-service {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .mobile-appointment-card.status-pending {
+        border-left-color: #ffc107;
+    }
+
+    .mobile-appointment-card.status-pending .mobile-appointment-time {
+        color: #ffc107;
+    }
+
+    .mobile-appointment-card.status-cancelled {
+        border-left-color: #dc3545;
+    }
+
+    .mobile-appointment-card.status-cancelled .mobile-appointment-time {
+        color: #dc3545;
+    }
+}
+
+.date-picker-container {
+    position: relative;
+    cursor: pointer;
+}
+
+.date-picker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.selected-date {
+    font-weight: 500;
+    color: #333;
+    padding: 8px 15px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.selected-date:hover {
+    background-color: #f8f9fa;
+}
+
+/* Mobil için */
+.mobile-header .date-picker-container {
+    flex: 1;
+    text-align: center;
+}
+
+.mobile-header .selected-date {
+    font-size: 1.1rem;
+}
+
+/* Takvim navigasyon butonları */
+.calendar-navigation {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.calendar-navigation .btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    color: #333;
+}
+
+.calendar-navigation .btn:hover {
+    background: #f8f9fa;
+}
+
+/* Mobil header düzenlemeleri */
+.mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: white;
+    margin: 0 0 15px 0;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.mobile-header .btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    color: #333;
+}
+
+.mobile-header .selected-date {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #333;
+    padding: 8px 15px;
+}
+
+.mobile-header .date-picker-container {
+    flex: 1;
+    text-align: center;
+    position: relative;
+}
+
+.mobile-header .date-picker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
 }
 
