@@ -151,8 +151,8 @@ foreach ($appointments as $appointment) {
             <div class="week-grid">
                 <div class="time-slots">
                     <?php 
-                    // 09:00'dan 18:00'a kadar 15'er dakika
-                    for ($hour = 9; $hour < 18; $hour++) {
+                    // 09:00'dan 17:00'a kadar 15'er dakika
+                    for ($hour = 9; $hour <= 17; $hour++) {
                         for ($minute = 0; $minute < 60; $minute += 15) {
                             $isHour = $minute === 0;
                             $timeClass = $isHour ? 'time-slot hour' : 'time-slot';
@@ -180,8 +180,13 @@ foreach ($appointments as $appointment) {
                         if (isset($appointmentsByDay[$dayDate])) {
                             foreach ($appointmentsByDay[$dayDate] as $index => $appointment) {
                                 $startTime = strtotime($appointment['TARIH']);
-                                $hour = date('G', $startTime);
+                                $hour = (int)date('G', $startTime);
                                 $minute = (int)date('i', $startTime);
+                                
+                                // Çalışma saatleri dışındaki randevuları gösterme
+                                if ($hour < 9 || $hour >= 17) {
+                                    continue;
+                                }
                                 
                                 // Pozisyonu hesapla
                                 $minutesSince9am = ($hour - 9) * 60 + $minute;
@@ -340,22 +345,6 @@ foreach ($appointments as $appointment) {
             // Eski h5'i kaldırıp yeni container'ı ekleyelim
             dateText.parentNode.replaceChild(datePickerContainer, dateText);
         });
-
-        function showMobileForm() {
-            document.querySelector('.mobile-new-appointment').classList.add('show');
-        }
-
-        function closeMobileForm() {
-            document.querySelector('.mobile-new-appointment').classList.remove('show');
-        }
-
-        // Mobilde randevu butonuna tıklandığında formu göster
-        document.querySelector('.new-appointment-btn').addEventListener('click', function(e) {
-            if (window.innerWidth <= 767) {
-                e.preventDefault();
-                showMobileForm();
-            }
-        });
     </script>
 
     <div class="mobile-appointments">
@@ -442,38 +431,6 @@ foreach ($appointments as $appointment) {
         ?>
     </div>
 
-    <!-- Mobil randevu ekleme formu -->
-    <div class="mobile-new-appointment">
-        <div class="form-header">
-            <div class="form-title">Yeni Randevu</div>
-            <button type="button" class="close-btn" onclick="closeMobileForm()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="mobileNewAppointmentForm" method="POST" action="new-appointment.php">
-            <div class="form-group">
-                <label>Hasta</label>
-                <select class="form-control" name="patient_id" required>
-                    <option value="">Hasta Seçin</option>
-                    <?php foreach($patients as $patient): ?>
-                        <option value="<?php echo $patient['ID']; ?>">
-                            <?php echo htmlspecialchars($patient['AD_SOYAD']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Tarih</label>
-                <input type="date" class="form-control" name="appointment_date" required>
-            </div>
-            <div class="form-group">
-                <label>Saat</label>
-                <input type="time" class="form-control" name="appointment_time" required>
-            </div>
-            <button type="submit" class="submit-btn">
-                Randevu Oluştur
-            </button>
-        </form>
-    </div>
+    
 </body>
 </html> 
