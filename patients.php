@@ -31,6 +31,25 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        .patient-actions.show {
+            display: flex;
+        }
+
+        .sort-button {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 15px;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+
+        .sort-button i {
+            font-size: 0.85rem;
+        }
+    </style>
 </head>
 
 <body>
@@ -43,12 +62,8 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <input type="text" class="search-input" placeholder="Hasta ara..."
                     value="<?php echo htmlspecialchars($search); ?>">
             </div>
-            <a href="new-patient.php" class="btn btn-success">
-                <i class="fas fa-plus me-md-2"></i>
-                <span class="d-none d-md-inline">Yeni Hasta</span>
-            </a>
             <a href="?sort=<?php echo $sort == 'desc' ? 'asc' : 'desc'; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>"
-                class="btn btn-outline-secondary">
+                class="btn btn-outline-secondary sort-button">
                 <i class="fas fa-sort"></i>
                 <?php echo $sort == 'desc' ? 'En Yeni' : 'En Eski'; ?>
             </a>
@@ -85,7 +100,15 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             <?php endforeach; ?>
         </div>
+        <a href="new-patient.php" class="new-appointment-btn">
+            <i class="fas fa-plus" style="margin: 0;"></i>
+        </a>
     </div>
+
+    <!-- Quick Actions -->
+
+
+
 
     <?php include 'includes/nav.php'; ?>
 

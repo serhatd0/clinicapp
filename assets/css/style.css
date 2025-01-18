@@ -527,7 +527,7 @@ body {
     justify-content: center;
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
     transition: all 0.3s ease;
-    z-index: 1000;
+    z-index: 9999;
     text-decoration: none;
 }
 
@@ -551,7 +551,7 @@ body {
         right: 15px;
         width: 65px;
         height: 65px;
-        z-index: 1001;
+        z-index: 9999;
         background: linear-gradient(45deg, #28a745, #34ce57);
         box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
     }
@@ -1300,7 +1300,7 @@ body {
         right: 15px;
         width: 65px;
         height: 65px;
-        z-index: 1001; /* Mobile header'ın üstünde görünmesi için */
+        z-index: 9999; /* Mobile header'ın üstünde görünmesi için */
     }
 
     .new-appointment-btn i {
