@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS `hastalar` (
   `CREATED_AT` datetime NOT NULL,
   `STATUS` tinyint(1) DEFAULT 1,
   `KIMLIK_TURU` enum('tc','passport') NOT NULL,
+  `PROFIL_RESMI` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `KIMLIK_NO` (`KIMLIK_NO`),
   UNIQUE KEY `EMAIL` (`EMAIL`)
@@ -73,58 +74,4 @@ CREATE TABLE IF NOT EXISTS `kullanicilar` (
   PRIMARY KEY (`ID`),
   UNIQUE KEY `EMAIL` (`EMAIL`),
   KEY `ROL_ID` (`ROL_ID`),
-  CONSTRAINT `kullanicilar_ibfk_1` FOREIGN KEY (`ROL_ID`) REFERENCES `roller` (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Oturum tablosu
-CREATE TABLE IF NOT EXISTS `oturumlar` (
-  `ID` bigint(20) NOT NULL AUTO_INCREMENT,
-  `KULLANICI_ID` bigint(20) NOT NULL,
-  `TOKEN` varchar(255) NOT NULL,
-  `IP_ADRESI` varchar(45) NOT NULL,
-  `TARAYICI` varchar(255) NOT NULL,
-  `CREATED_AT` timestamp NOT NULL DEFAULT current_timestamp(),
-  `EXPIRES_AT` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`ID`),
-  KEY `KULLANICI_ID` (`KULLANICI_ID`),
-  CONSTRAINT `oturumlar_ibfk_1` FOREIGN KEY (`KULLANICI_ID`) REFERENCES `kullanicilar` (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Önce eski kaydı silelim
-DELETE FROM `kullanicilar` WHERE `EMAIL` = 'serhat';
-
--- Yeni admin kullanıcısını ekleyelim (email: admin, şifre: 123456)
-INSERT INTO `kullanicilar` (`AD_SOYAD`, `EMAIL`, `SIFRE`, `ROL_ID`, `DURUM`) VALUES
-('Admin', 'admin', '$2y$10$YourNewHashHere', 
-(SELECT ID FROM roller WHERE ROL_ADI = 'doktor'), 'aktif');
-
--- Önce tabloları temizleyelim
-TRUNCATE TABLE `oturumlar`;
-DELETE FROM `kullanicilar`;
-
--- Yeni şifre ile admin kullanıcısı oluşturalım
-INSERT INTO `kullanicilar` (`AD_SOYAD`, `EMAIL`, `SIFRE`, `ROL_ID`, `DURUM`) VALUES
-('Admin', 'admin', '$2y$10$YourNewHashHere', 
-(SELECT ID FROM roller WHERE ROL_ADI = 'doktor'), 'aktif');
-
--- Randevu şablonları için tablo
-CREATE TABLE IF NOT EXISTS `randevu_sablonlari` (
-  `ID` int(11) NOT NULL AUTO_INCREMENT,
-  `ISLEM_ADI` varchar(100) NOT NULL,
-  `GUN` int(11) NOT NULL,
-  `SURE` int(11) DEFAULT 45,
-  `SIRA` int(11) NOT NULL,
-  PRIMARY KEY (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Şablon verilerini ekle
-INSERT INTO `randevu_sablonlari` (`ISLEM_ADI`, `GUN`, `SURE`, `SIRA`) VALUES
-('İşlem Tarihi', 1, 45, 1),
-('İlk Yıkama', 3, 45, 2),
-('Kabuk Alımı', 10, 45, 3),
-('Prp', 31, 45, 4),
-('Prp', 52, 45, 5),
-('Prp', 73, 45, 6),
-('Prp', 94, 45, 7),
-('Prp', 115, 45, 8),
-('Prp', 136, 45, 9);
+  CONSTRAINT `kullanicilar_ibfk_1` FOREIGN KEY (`ROL_ID`) REFERENCES `

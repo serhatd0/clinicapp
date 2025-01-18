@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </script>
     <?php endif; ?>
 
-    <div class="container-fuild py-4 content-area">
+    <div class="container-fluid py-4 content-area">
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6">
                 <div class="form-container">

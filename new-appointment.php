@@ -5,6 +5,17 @@ require_once 'includes/functions.php';
 $database = new Database();
 $db = $database->connect();
 
+// URL'den hasta ID'sini al
+$selectedPatientId = isset($_GET['patient']) ? (int)$_GET['patient'] : null;
+
+// Seçili hasta varsa bilgilerini getir
+$selectedPatient = null;
+if ($selectedPatientId) {
+    $stmt = $db->prepare("SELECT ID, AD_SOYAD FROM hastalar WHERE ID = :id");
+    $stmt->execute([':id' => $selectedPatientId]);
+    $selectedPatient = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
 // Hasta listesini getir
 $stmt = $db->query("SELECT ID, AD_SOYAD FROM hastalar ORDER BY AD_SOYAD ASC");
 $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -108,6 +119,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             padding: 4px 8px;
             font-size: 0.9rem;
         }
+        
+        .form-select-lg {
+            background-color: #e9ecef;
+            font-weight: 500;
+            color: #212529;
+            cursor: not-allowed;
+        }
+        
+        .form-select-lg option {
+            font-weight: normal;
+        }
+
+        @media (max-width: 767px) {
+            .content-area {
+                padding: 15px 15px 80px 15px !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -126,16 +154,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     <form method="POST" id="appointmentForm">
                         <div class="form-section">
-                            <div class="mb-3">
-                                <label for="patient_id" class="form-label">Hasta</label>
-                                <select class="form-select" id="patient_id" name="patient_id" required>
-                                    <option value="">Hasta seçiniz</option>
+                            <div class="mb-4">
+                                <label class="form-label">Hasta Seçimi</label>
+                                <select class="form-select <?php echo $selectedPatientId ? 'form-select-lg' : ''; ?>" 
+                                        name="patient_id" 
+                                        required 
+                                        <?php echo $selectedPatientId ? 'disabled' : ''; ?>>
+                                    <option value="">Hasta seçiniz...</option>
                                     <?php foreach ($patients as $patient): ?>
-                                        <option value="<?php echo $patient['ID']; ?>">
+                                        <option value="<?php echo $patient['ID']; ?>"
+                                                <?php echo ($selectedPatientId == $patient['ID'] || 
+                                                          (isset($_POST['patient_id']) && $_POST['patient_id'] == $patient['ID'])) 
+                                                          ? 'selected' : ''; ?>>
                                             <?php echo htmlspecialchars($patient['AD_SOYAD']); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php if ($selectedPatientId): ?>
+                                    <input type="hidden" name="patient_id" value="<?php echo $selectedPatientId; ?>">
+                                <?php endif; ?>
                             </div>
 
                             <div class="mb-3">

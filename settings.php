@@ -22,6 +22,7 @@ if (isAdmin()) {
 
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,28 +30,155 @@ if (isAdmin()) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .page-header {
+            background: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            margin: 0;
+            color: #212529;
+        }
+
+        .settings-menu {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .settings-menu .list-group-item {
+            border: none;
+            padding: 15px 20px;
+            color: #495057;
+            transition: all 0.2s;
+        }
+
+        .settings-menu .list-group-item:hover {
+            background-color: #f8f9fa;
+            color: #28a745;
+        }
+
+        .settings-menu .list-group-item.active {
+            background-color: #e8f5e9;
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .settings-content {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .settings-content .card-header {
+            background: none;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .settings-content .card-body {
+            padding: 20px;
+        }
+
+        .user-table {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .user-table th,
+        .user-table td {
+            padding: 12px 15px;
+            vertical-align: middle;
+            border-color: #e9ecef;
+        }
+
+        .user-table th {
+            background: #f8f9fa;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .user-actions .btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        @media (max-width: 767px) {
+            .settings-menu {
+                margin-bottom: 20px;
+            }
+
+            .settings-content {
+                margin-bottom: 70px;
+            }
+
+            .page-header {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+
+            .user-table td {
+                white-space: normal;
+                padding: 10px;
+            }
+
+            .user-actions {
+                display: flex;
+                gap: 5px;
+            }
+
+            .user-info {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+
+            .user-email {
+                font-size: 0.9rem;
+                color: #6c757d;
+            }
+
+            .settings-content .card-header,
+            .settings-content .card-body {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
+
 <body>
     <?php include 'includes/header.php'; ?>
-    
-    <div class="container py-4 content-area">
-        <div class="row">
-            <!-- Sol Menü -->
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Ayarlar Menüsü</h5>
-                    </div>
+
+    <div class="settings-container content-area py-4">
+        <div class="page-header">
+            <h1 class="page-title">Ayarlar</h1>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4 mx-auto">
+                <div class="card settings-menu">
                     <div class="list-group list-group-flush">
-                        <?php if ($_SESSION['rol_id'] == 1 || $_SESSION['rol_id'] == 3): // Admin için kullanıcı yönetimi ?>
-                            <a href="#users" class="list-group-item list-group-item-action" data-bs-toggle="collapse">
+                        <?php if ($_SESSION['rol_id'] == 1 || $_SESSION['rol_id'] == 3): ?>
+                            <a href="users.php" class="list-group-item list-group-item-action">
                                 <i class="fas fa-users me-2"></i>Kullanıcı Yönetimi
                             </a>
                         <?php endif; ?>
-                        <a href="#profile" class="list-group-item list-group-item-action">
+                        <a href="profile.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-user-circle me-2"></i>Profil Ayarları
                         </a>
-                        <a href="#password" class="list-group-item list-group-item-action">
+                        <a href="change_password.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-key me-2"></i>Şifre Değiştir
                         </a>
                         <a href="logout.php" class="list-group-item list-group-item-action text-danger">
@@ -59,76 +187,11 @@ if (isAdmin()) {
                     </div>
                 </div>
             </div>
-            
-            <!-- Sağ İçerik -->
-            <div class="col-md-8">
-                <?php if ($_SESSION['rol_id'] == 1 || $_SESSION['rol_id'] == 3): // Admin için kullanıcı listesi ?>
-                    <div id="users" class="collapse show">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Kullanıcı Listesi</h5>
-                                <a href="add_user.php" class="btn btn-success btn-sm">
-                                    <i class="fas fa-user-plus me-1"></i>Yeni Kullanıcı
-                                </a>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Ad Soyad</th>
-                                                <th>Email</th>
-                                                <th>Rol</th>
-                                                <th>Durum</th>
-                                                <th>İşlemler</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($users as $user): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($user['AD_SOYAD']); ?></td>
-                                                    <td><?php echo htmlspecialchars($user['EMAIL']); ?></td>
-                                                    <td><?php echo htmlspecialchars($user['ROL_ADI']); ?></td>
-                                                    <td>
-                                                        <span class="badge bg-<?php echo $user['DURUM'] == 'aktif' ? 'success' : 'danger'; ?>">
-                                                            <?php echo ucfirst($user['DURUM']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <a href="edit_user.php?id=<?php echo $user['ID']; ?>" 
-                                                           class="btn btn-sm btn-primary">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <button class="btn btn-sm btn-danger" 
-                                                                onclick="deleteUser(<?php echo $user['ID']; ?>)">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <?php endif; ?>
-                
-                <!-- Profil Ayarları -->
-                <div id="profile" class="collapse">
-                    <!-- Profil ayarları formu buraya gelecek -->
-                </div>
-                
-                <!-- Şifre Değiştirme -->
-                <div id="password" class="collapse">
-                    <!-- Şifre değiştirme formu buraya gelecek -->
-                </div>
-            </div>
         </div>
     </div>
 
     <?php include 'includes/nav.php'; ?>
-    
+
     <!-- Silme Onay Modalı -->
     <div class="modal fade" id="deleteUserModal" tabindex="-1">
         <div class="modal-dialog">
@@ -147,22 +210,23 @@ if (isAdmin()) {
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let userIdToDelete = null;
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-        
+
         function deleteUser(id) {
             userIdToDelete = id;
             deleteModal.show();
         }
-        
-        document.getElementById('confirmDelete').addEventListener('click', function() {
+
+        document.getElementById('confirmDelete').addEventListener('click', function () {
             if (userIdToDelete) {
                 window.location.href = 'delete_user.php?id=' + userIdToDelete;
             }
         });
     </script>
 </body>
-</html> 
+
+</html>

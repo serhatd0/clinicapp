@@ -57,6 +57,7 @@
 
 body {
     background-color: #f8f9fa;
+    padding-bottom: 65px !important;
 }
 
 .form-container {
@@ -217,7 +218,7 @@ body {
     right: 0;
     background: #fff;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    z-index: 1000;
+    z-index: 9999;
     display: block;
     padding: 10px 0;
 }
@@ -438,6 +439,7 @@ body {
     text-align: center;
     font-weight: 500;
     margin-right: 15px;
+    color: white;
 }
 
 .appointment-info {
@@ -1545,3 +1547,53 @@ body {
     cursor: pointer;
 }
 
+/* Mobile nav için genel düzenlemeler */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 10px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 9999;
+    height: 65px;
+}
+
+/* Sayfa içeriği için genel padding */
+body {
+    padding-bottom: 65px !important;
+}
+
+/* Sabit butonlar için düzenleme */
+.new-appointment-btn {
+    bottom: 80px !important; /* bottom-nav height + extra space */
+}
+
+/* Mobil görünüm için özel düzenlemeler */
+@media (max-width: 767px) {
+    .container,
+    .container-fluid {
+        padding-bottom: 65px;
+    }
+    
+    .content-area {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    /* Form ve liste containerları için düzenleme */
+    .form-container,
+    .patient-list,
+    .appointment-card,
+    .calendar-container {
+        margin-bottom: 80px !important;
+    }
+    
+    /* Floating action buttons için düzenleme */
+    .floating-btn,
+    .action-btn,
+    .new-appointment-btn {
+        bottom: 80px !important;
+    }
+}

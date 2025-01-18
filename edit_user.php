@@ -93,7 +93,10 @@ $roller = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <?php include 'includes/header.php'; ?>
     
-    <div class="container-fuild py-4 content-area">
+    <div class="container py-4 content-area">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          
+        </div>
         <div class="row justify-content-center">
             <div class="col-md-6">
                 <div class="card">

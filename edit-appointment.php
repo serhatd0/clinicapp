@@ -22,38 +22,36 @@ $isFirstAppointment = $appointment['ID'] == $appointment['first_appointment_id']
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
-        $tarih = $_POST['appointment_date'] . ' ' . $_POST['appointment_time'];
-        $durum = $_POST['status'];
+        $database = new Database();
+        $db = $database->connect();
         
-        if ($isFirstAppointment && isset($_POST['update_all']) && $_POST['update_all'] == '1') {
-            // Tüm seri randevuları güncelle
-            $stmt = $db->prepare("
-                UPDATE randevular 
-                SET DURUM = :durum 
-                WHERE ANA_RANDEVU_ID = :ana_id
-            ");
-            $stmt->execute([
-                ':durum' => $durum,
-                ':ana_id' => $appointment['ANA_RANDEVU_ID']
-            ]);
+        // Tüm seriyi güncelle seçeneği kontrol ediliyor
+        if (isset($_POST['update_series']) && $_POST['update_series'] == '1' && $appointment['ANA_RANDEVU_ID']) {
+            $success = updateAppointmentSeries($db, $appointment['ID'], $_POST);
         } else {
-            // Sadece seçili randevuyu güncelle
+            // Tek randevu güncelleme
             $stmt = $db->prepare("
                 UPDATE randevular 
-                SET TARIH = :tarih, DURUM = :durum 
+                SET TARIH = :tarih,
+                    DURUM = :durum,
+                    NOTLAR = :notlar
                 WHERE ID = :id
             ");
-            $stmt->execute([
-                ':tarih' => $tarih,
-                ':durum' => $durum,
-                ':id' => $_GET['id']
+            
+            $success = $stmt->execute([
+                ':tarih' => $_POST['appointment_date'] . ' ' . $_POST['appointment_time'],
+                ':durum' => $_POST['status'],
+                ':notlar' => isset($_POST['notes']) ? $_POST['notes'] : null,
+                ':id' => $appointment['ID']
             ]);
         }
-        
-        header('Location: appointments.php?message=updated');
-        exit;
+
+        if ($success) {
+            header('Location: appointments.php?success=1');
+            exit;
+        }
     } catch (Exception $e) {
-        $error_messages[] = $e->getMessage();
+        $error = $e->getMessage();
     }
 }
 ?>
@@ -167,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                     <?php endif; ?>
 
-                    <form method="POST">
+                    <form method="POST" action="" class="needs-validation" novalidate>
                         <div class="appointment-details">
                             <div class="detail-group">
                                 <label for="appointment_date" class="detail-label">Randevu Tarihi</label>
@@ -211,13 +209,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                         <?php endif; ?>
 
+                        <?php if ($appointment['ANA_RANDEVU_ID']): ?>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="update_series" value="1" id="updateSeries">
+                                    <label class="form-check-label" for="updateSeries">
+                                        Tüm randevu serisini güncelle
+                                    </label>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-success flex-grow-1">
                                 <i class="fas fa-save me-2"></i>Kaydet
                             </button>
-                            <a href="delete_appointment.php?id=<?php echo $appointment['ID']; ?>" 
+                            <a href="#" 
                                class="btn btn-danger"
-                               onclick="return confirm('Bu randevuyu silmek istediğinizden emin misiniz?')">
+                               onclick="confirmDelete(<?php echo $appointment['ID']; ?>, <?php echo $appointment['ANA_RANDEVU_ID'] ? 'true' : 'false'; ?>)">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </div>
@@ -230,6 +239,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <?php include 'includes/nav.php'; ?>
 
     <script>
+        function confirmDelete(id, hasSeries) {
+            let message = 'Bu randevuyu silmek istediğinizden emin misiniz?';
+            let url = 'delete_appointment.php?id=' + id;
+            
+            if (hasSeries) {
+                if (confirm('Bu randevu bir serinin parçası. Tüm seriyi silmek ister misiniz?')) {
+                    url += '&series=1';
+                }
+            }
+            
+            if (confirm(message)) {
+                window.location.href = url;
+            }
+        }
+        
         function checkSunday(input) {
             const date = new Date(input.value);
             if (date.getDay() === 0) { // 0 = Pazar

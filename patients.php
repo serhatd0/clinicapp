@@ -23,6 +23,7 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,19 +32,24 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
 </head>
+
 <body>
     <?php include 'includes/header.php'; ?>
-    
+
     <div class="container py-4 content-area bg-white">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
             <div class="search-bar flex-grow-1 me-3">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" class="search-input" placeholder="Hasta ara..." 
-                       value="<?php echo htmlspecialchars($search); ?>">
+                <input type="text" class="search-input" placeholder="Hasta ara..."
+                    value="<?php echo htmlspecialchars($search); ?>">
             </div>
-            <a href="?sort=<?php echo $sort == 'desc' ? 'asc' : 'desc'; ?><?php echo $search ? '&search='.urlencode($search) : ''; ?>" 
-               class="btn btn-outline-secondary">
-                <i class="fas fa-sort"></i> 
+            <a href="new-patient.php" class="btn btn-success">
+                <i class="fas fa-plus me-md-2"></i>
+                <span class="d-none d-md-inline">Yeni Hasta</span>
+            </a>
+            <a href="?sort=<?php echo $sort == 'desc' ? 'asc' : 'desc'; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>"
+                class="btn btn-outline-secondary">
+                <i class="fas fa-sort"></i>
                 <?php echo $sort == 'desc' ? 'En Yeni' : 'En Eski'; ?>
             </a>
         </div>
@@ -67,7 +73,7 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <i class="fas fa-camera"></i>
                             <span>Galeri</span>
                         </a>
-                        <a href="appointments.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
+                        <a href="patient_appointments.php?id=<?php echo $patient['ID']; ?>" class="action-button">
                             <i class="fas fa-calendar"></i>
                             <span>Randevu</span>
                         </a>
@@ -80,7 +86,7 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php endforeach; ?>
         </div>
     </div>
-    
+
     <?php include 'includes/nav.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -90,10 +96,10 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
         const searchInput = document.querySelector('.search-input');
         const patientList = document.querySelector('.patient-list');
 
-        searchInput.addEventListener('input', function(e) {
+        searchInput.addEventListener('input', function (e) {
             clearTimeout(searchTimer);
             const searchTerm = e.target.value;
-            
+
             // 500ms bekle ve sonra aramayı yap
             searchTimer = setTimeout(() => {
                 fetchPatients(searchTerm);
@@ -116,10 +122,11 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     panel.classList.remove('show');
                 }
             });
-            
+
             // Tıklanan hastanın action panelini aç/kapat
             element.nextElementSibling.classList.toggle('show');
         }
     </script>
 </body>
-</html> 
+
+</html>
