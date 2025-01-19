@@ -5,47 +5,44 @@ require_once 'includes/functions.php';
 $database = new Database();
 $db = $database->connect();
 
-// Arama ve sıralama parametreleri
 $search = isset($_GET['search']) ? $_GET['search'] : '';
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'desc';
 
-// SQL sorgusunu güncelle
-$sql = "SELECT *, DATE_FORMAT(CREATED_AT, '%d.%m.%Y %H:%i') as KAYIT_TARIHI 
-        FROM hastalar 
-        WHERE (AD_SOYAD LIKE :search OR KIMLIK_NO LIKE :search) 
-        ORDER BY CREATED_AT " . ($sort == 'asc' ? 'ASC' : 'DESC');
+if (strlen($search) >= 2) {
+    $stmt = $db->prepare("
+        SELECT * FROM hastalar 
+        WHERE (AD_SOYAD LIKE :search OR TELEFON LIKE :search)
+        AND STATUS = 1
+        ORDER BY AD_SOYAD
+        LIMIT 10
+    ");
 
-$stmt = $db->prepare($sql);
-$stmt->execute([':search' => "%$search%"]);
-$patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([':search' => '%' . $search . '%']);
+    $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Hasta listesini döndür
-foreach ($patients as $patient): ?>
-    <div class="patient-item">
-        <div class="patient-info" onclick="toggleActions(this)">
-            <div class="patient-name"><?php echo htmlspecialchars($patient['AD_SOYAD']); ?></div>
-            <div class="patient-details">
-                <i class="fas fa-phone"></i> <?php echo htmlspecialchars($patient['TELEFON']); ?> •
-                <i class="fas fa-calendar-plus"></i> <?php echo htmlspecialchars($patient['KAYIT_TARIHI']); ?>
+    foreach ($patients as $patient) {
+        ?>
+        <div class="patient-card list-group-item list-group-item-action" data-patient-id="<?php echo $patient['ID']; ?>">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1"><?php echo htmlspecialchars($patient['AD_SOYAD']); ?></h6>
+                    <small class="text-muted">
+                        <i class="fas fa-phone me-1"></i><?php echo htmlspecialchars($patient['TELEFON']); ?>
+                    </small>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted d-block">
+                        <i class="fas fa-calendar me-1"></i>
+                        <?php echo date('d.m.Y', strtotime($patient['DOGUM_TARIHI'])); ?>
+                    </small>
+                    <small class="text-muted">
+                        <i class="fas fa-id-card me-1"></i>
+                        <?php echo htmlspecialchars($patient['KIMLIK_NO']); ?>
+                    </small>
+                </div>
             </div>
         </div>
-        <div class="patient-actions">
-            <a href="edit.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
-                <i class="fas fa-edit"></i>
-                <span>Düzenle</span>
-            </a>
-            <a href="gallery.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
-                <i class="fas fa-camera"></i>
-                <span>Galeri</span>
-            </a>
-            <a href="appointments.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
-                <i class="fas fa-calendar"></i>
-                <span>Randevu</span>
-            </a>
-            <a href="payment.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
-                <i class="fas fa-dollar-sign"></i>
-                <span>Ödeme</span>
-            </a>
-        </div>
-    </div>
-<?php endforeach; ?> 
+        <?php
+    }
+} else {
+    echo '<div class="text-center text-muted py-3">En az 2 karakter girerek arama yapın</div>';
+}

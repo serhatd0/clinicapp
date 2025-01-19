@@ -32,6 +32,41 @@ while ($currentDay <= $endDate) {
 
 // Seçili güne ait randevuları getir
 $appointments = getAppointmentsByDate($db, $selectedDate);
+
+// Son ödemeleri getir
+$stmt = $db->prepare("
+    SELECT o.*, t.TAKSIT_NO, hb.PLAN_ADI, h.AD_SOYAD,
+           DATE_FORMAT(o.ODEME_TARIHI, '%d.%m.%Y') as ODEME_TARIHI_FORMAT
+    FROM odemeler o
+    JOIN taksitler t ON t.ID = o.TAKSIT_ID
+    JOIN hasta_borc hb ON hb.ID = t.BORC_ID
+    JOIN hastalar h ON h.ID = hb.HASTA_ID
+    ORDER BY o.ODEME_TARIHI DESC
+    LIMIT 10
+");
+$stmt->execute();
+$sonOdemeler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Bugünkü ödemelerin toplamı
+$stmt = $db->prepare("
+    SELECT COALESCE(SUM(o.TUTAR), 0) as BUGUN_TOPLAM,
+           COUNT(*) as BUGUN_ISLEM
+    FROM odemeler o
+    WHERE DATE(o.ODEME_TARIHI) = CURDATE()
+");
+$stmt->execute();
+$bugunOzet = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Vadesi geçmiş ödemeler
+$stmt = $db->prepare("
+    SELECT COUNT(*) as GECIKEN_TAKSIT,
+           COALESCE(SUM(t.TUTAR), 0) as GECIKEN_TUTAR
+    FROM taksitler t
+    WHERE t.DURUM != 'odendi'
+    AND t.VADE_TARIHI < CURDATE()
+");
+$stmt->execute();
+$gecikmeOzet = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -232,6 +267,7 @@ $appointments = getAppointmentsByDate($db, $selectedDate);
             color: white;
             min-width: 80px;
             padding-right: 15px;
+            background-color: #0d6efd;
         }
 
         .appointment-info {
@@ -357,6 +393,27 @@ $appointments = getAppointmentsByDate($db, $selectedDate);
                 display: none;
             }
         }
+
+        .bg-gradient {
+            background: linear-gradient(to right bottom, #ffffff, #f8f9fa);
+        }
+
+        .card {
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .table> :not(caption)>*>* {
+            padding: 1rem;
+        }
+
+        .badge {
+            padding: 0.5rem 0.8rem;
+            font-weight: 500;
+        }
     </style>
 </head>
 
@@ -417,13 +474,7 @@ $appointments = getAppointmentsByDate($db, $selectedDate);
                                 </span>
                             </div>
                         </div>
-                        <div class="appointment-actions">
-                            <a href="edit-appointment.php?id=<?php echo $appointment['ID']; ?>"
-                                class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2">
-                                <i class="fas fa-edit"></i>
-                                <span class="d-none d-md-inline">Düzenle</span>
-                            </a>
-                        </div>
+
                     </a>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -444,6 +495,127 @@ $appointments = getAppointmentsByDate($db, $selectedDate);
                 <i class="fas fa-user-plus"></i>
                 <span>Yeni Hasta</span>
             </a>
+        </div>
+
+        <!-- Ödemeler Bölümü -->
+        <div class="mt-4">
+            <h4 class="mb-4">
+                <i class="fas fa-money-bill-wave me-2"></i>
+                Ödemeler Özeti
+            </h4>
+
+            <!-- Ödeme İstatistikleri -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm bg-gradient">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-success bg-opacity-25 p-3 me-3">
+                                    <i class="fas fa-coins text-success fa-2x"></i>
+                                </div>
+                                <h6 class="card-title mb-0">Bugünkü Ödemeler</h6>
+                            </div>
+                            <h3 class="text-success mb-1">
+                                <?php echo number_format($bugunOzet['BUGUN_TOPLAM'], 2, ',', '.'); ?> ₺
+                            </h3>
+                            <small class="text-muted">
+                                <i class="fas fa-exchange-alt me-1"></i>
+                                <?php echo $bugunOzet['BUGUN_ISLEM']; ?> işlem
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm bg-gradient">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-danger bg-opacity-25 p-3 me-3">
+                                    <i class="fas fa-exclamation-circle text-danger fa-2x"></i>
+                                </div>
+                                <h6 class="card-title mb-0">Vadesi Geçen</h6>
+                            </div>
+                            <h3 class="text-danger mb-1">
+                                <?php echo number_format($gecikmeOzet['GECIKEN_TUTAR'], 2, ',', '.'); ?> ₺
+                            </h3>
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                <?php echo $gecikmeOzet['GECIKEN_TAKSIT']; ?> taksit
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm bg-gradient">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-primary bg-opacity-25 p-3 me-3">
+                                    <i class="fas fa-tasks text-primary fa-2x"></i>
+                                </div>
+                                <h6 class="card-title mb-0">Hızlı İşlemler</h6>
+                            </div>
+                            <div class="d-flex gap-2 mt-auto">
+                                <a href="all_debts.php" class="btn btn-primary btn-sm flex-grow-1">
+                                    <i class="fas fa-list me-1"></i>
+                                    Tüm Ödemeler
+                                </a>
+                                <a href="payment.php" class="btn btn-outline-primary btn-sm flex-grow-1">
+                                    <i class="fas fa-plus me-1"></i>
+                                    Yeni Ödeme
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Son Ödemeler -->
+            <div class="card border-0 shadow-sm">
+                <div
+                    class="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-center py-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-history text-primary me-2"></i>
+                        <h5 class="mb-0">Son Ödemeler</h5>
+                    </div>
+                    <a href="all_debts.php" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-external-link-alt me-1"></i>
+                        Tümünü Gör
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr class="bg-light">
+                                    <th>Tarih</th>
+                                    <th>Hasta</th>
+                                    <th>Plan</th>
+                                    <th>Taksit</th>
+                                    <th>Tutar</th>
+                                    <th>Ödeme Türü</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($sonOdemeler as $odeme): ?>
+                                    <tr class="align-middle">
+                                        <td><?php echo $odeme['ODEME_TARIHI_FORMAT']; ?></td>
+                                        <td><?php echo htmlspecialchars($odeme['AD_SOYAD']); ?></td>
+                                        <td><?php echo htmlspecialchars($odeme['PLAN_ADI']); ?></td>
+                                        <td><?php echo $odeme['TAKSIT_NO']; ?>. Taksit</td>
+                                        <td class="fw-bold text-success">
+                                            <?php echo number_format($odeme['TUTAR'], 2, ',', '.'); ?> ₺
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-<?php echo getOdemeTuruColor($odeme['ODEME_TURU']); ?>">
+                                                <?php echo getOdemeTuruText($odeme['ODEME_TURU']); ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

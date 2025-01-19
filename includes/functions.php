@@ -892,3 +892,55 @@ function getWeekDays($startDate = null)
 
     return $days;
 }
+
+function getTaksitStatusColor($durum)
+{
+    if (strpos($durum, 'Kısmi') !== false) {
+        return 'warning';
+    } elseif ($durum == 'odendi' || strpos($durum, 'Ödendi') !== false) {
+        return 'success';
+    }
+
+    switch ($durum) {
+        case 'bekliyor':
+            return 'secondary';
+        case 'gecikti':
+            return 'danger';
+        default:
+            return 'secondary';
+    }
+}
+
+function getTaksitStatusText($status)
+{
+    switch ($status) {
+        case 'odendi':
+            return 'Ödendi';
+        case 'bekliyor':
+            return 'Bekliyor';
+        case 'gecikti':
+            return 'Gecikti';
+        default:
+            return 'Belirsiz';
+    }
+}
+
+function getOdemeTuruText($tur)
+{
+    $turler = [
+        'nakit' => 'Nakit',
+        'kredi_karti' => 'Kredi Kartı',
+        'havale' => 'Havale/EFT'
+    ];
+    return $turler[$tur] ?? $tur;
+}
+
+function getOdemeTuruColor($tur)
+{
+    $renkler = [
+        'nakit' => 'success',
+        'kredi_karti' => 'primary',
+        'havale' => 'info'
+    ];
+    return $renkler[$tur] ?? 'secondary';
+}

@@ -34,6 +34,12 @@ require_once __DIR__ . '/auth.php';
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'accounting.php' ? 'active' : ''; ?>"
+                            href="accounting.php">
+                            <i class="fas fa-file-invoice-dollar"></i> Cari
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>"
                             href="settings.php">
                             <i class="fas fa-cog"></i> Ayarlar
