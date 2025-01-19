@@ -59,6 +59,84 @@ function validatePassportNumber($passport)
 function saveFormData($db, $data)
 {
     try {
+        $profileImage = 'default-avatar.jpg'; // Varsayılan değer
+
+
+        // Profil resmi yükleme işlemi
+        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'uploads/profiles/';
+
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+            error_log('File Type: ' . $_FILES['profile_image']['type']);
+
+            if (!in_array($_FILES['profile_image']['type'], $allowedTypes)) {
+                error_log('Invalid file type: ' . $_FILES['profile_image']['type']);
+
+                throw new Exception('Sadece JPG ve PNG formatları desteklenir.');
+            }
+
+            if ($_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
+                error_log('File too large: ' . $_FILES['profile_image']['size']);
+                throw new Exception('Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.');
+            }
+
+            $extension = pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION);
+            $fileName = uniqid() . '.' . $extension;
+            $filePath = $uploadDir . $fileName;
+            error_log('File Path: ' . $filePath);
+
+            if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $filePath)) {
+                error_log('File uploaded successfully');
+                // Resmi optimize et
+                $image = imagecreatefromstring(file_get_contents($filePath));
+                if ($image === false) {
+                    error_log('Failed to create image from string');
+                    throw new Exception('Resim işlenirken bir hata oluştu.');
+                }
+
+                $width = imagesx($image);
+                $height = imagesy($image);
+                error_log('Original dimensions: ' . $width . 'x' . $height);
+
+                // Maksimum boyutlar
+                $maxWidth = 800;
+                $maxHeight = 800;
+
+                // Yeni boyutları hesapla
+                if ($width > $maxWidth || $height > $maxHeight) {
+                    $ratio = min($maxWidth / $width, $maxHeight / $height);
+                    $newWidth = round($width * $ratio);
+                    $newHeight = round($height * $ratio);
+
+                    $resized = imagecreatetruecolor($newWidth, $newHeight);
+                    imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                    $image = $resized;
+                }
+
+                // Resmi kaydet
+                switch (strtolower($extension)) {
+                    case 'jpg':
+                    case 'jpeg':
+                        imagejpeg($image, $filePath, 80);
+                        break;
+                    case 'png':
+                        imagepng($image, $filePath, 8);
+                        break;
+                }
+
+                imagedestroy($image);
+                $profileImage = $fileName;
+            } else {
+                error_log('Fotoğraf yükleme hatası: ' . error_get_last()['message']);
+            }
+        } else {
+            error_log('No file uploaded or upload error: ' . print_r($_FILES['profile_image']['error'] ?? 'not set', true));
+        }
+
         $sql = "INSERT INTO hastalar (
             AD_SOYAD,
             KIMLIK_TURU,
@@ -69,6 +147,7 @@ function saveFormData($db, $data)
             EMAIL,
             REFERANS,
             ACIKLAMA,
+            PROFIL_RESMI,
             CREATED_AT
         ) VALUES (
             :ad_soyad,
@@ -80,6 +159,7 @@ function saveFormData($db, $data)
             :email,
             :referans,
             :aciklama,
+            :profil_resmi,
             :created_at
         )";
 
@@ -91,10 +171,13 @@ function saveFormData($db, $data)
             ':cinsiyet' => trim($data['gender']),
             ':telefon' => trim($data['phone']),
             ':email' => trim($data['email']),
-            ':referans' => trim($data['reference']),
+            ':referans' => isset($data['reference']) ? trim($data['reference']) : null,
             ':aciklama' => isset($data['emptyField']) ? trim($data['emptyField']) : null,
+            ':profil_resmi' => $profileImage,
             ':created_at' => !empty($data['registerDate']) ? $data['registerDate'] : date('Y-m-d H:i:s')
         ];
+
+        error_log('SQL Parametreleri: ' . print_r($params, true));
 
         $stmt = $db->prepare($sql);
         $result = $stmt->execute($params);
@@ -142,12 +225,19 @@ function validateUpdateForm($data)
     return $errors;
 }
 
-function updatePatient($db, $id, $data)
+function updatePatient($db, $patientId, $data)
 {
     try {
-        $profileImage = null;
+        // Mevcut profil resmini veritabanından al
+        $stmt = $db->prepare("SELECT PROFIL_RESMI FROM hastalar WHERE ID = :id");
+        $stmt->execute([':id' => $patientId]);
+        $profileImage = $stmt->fetchColumn();
 
-        // Profil resmi yükleme işlemi
+        if (!$profileImage) {
+            $profileImage = 'default-avatar.jpg';
+        }
+
+        // Yeni profil resmi yükleme işlemi
         if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
             $uploadDir = 'uploads/profiles/';
             if (!file_exists($uploadDir)) {
@@ -163,58 +253,90 @@ function updatePatient($db, $id, $data)
                 throw new Exception('Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.');
             }
 
-            // Eski resmi sil
-            $stmt = $db->prepare("SELECT PROFIL_RESMI FROM hastalar WHERE ID = ?");
-            $stmt->execute([$id]);
-            $oldImage = $stmt->fetchColumn();
-            if ($oldImage && file_exists($uploadDir . $oldImage)) {
-                unlink($uploadDir . $oldImage);
-            }
-
             $extension = pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION);
             $fileName = uniqid() . '.' . $extension;
             $filePath = $uploadDir . $fileName;
 
             if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $filePath)) {
-                optimizeImage($filePath);
+                // Resmi optimize et
+                $image = imagecreatefromstring(file_get_contents($filePath));
+                if ($image === false) {
+                    throw new Exception('Resim işlenirken bir hata oluştu.');
+                }
+
+                $width = imagesx($image);
+                $height = imagesy($image);
+
+                // Maksimum boyutlar
+                $maxWidth = 800;
+                $maxHeight = 800;
+
+                // Yeni boyutları hesapla
+                if ($width > $maxWidth || $height > $maxHeight) {
+                    $ratio = min($maxWidth / $width, $maxHeight / $height);
+                    $newWidth = round($width * $ratio);
+                    $newHeight = round($height * $ratio);
+
+                    $resized = imagecreatetruecolor($newWidth, $newHeight);
+                    imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                    $image = $resized;
+                }
+
+                // Resmi kaydet
+                switch (strtolower($extension)) {
+                    case 'jpg':
+                    case 'jpeg':
+                        imagejpeg($image, $filePath, 80);
+                        break;
+                    case 'png':
+                        imagepng($image, $filePath, 8);
+                        break;
+                }
+
+                imagedestroy($image);
+
+                // Eski fotoğrafı sil (default-avatar.jpg değilse)
+                if ($profileImage != 'default-avatar.jpg' && file_exists($uploadDir . $profileImage)) {
+                    unlink($uploadDir . $profileImage);
+                }
                 $profileImage = $fileName;
+
             }
         }
 
-        // Hasta bilgilerini güncelle
         $sql = "UPDATE hastalar SET 
             AD_SOYAD = :ad_soyad,
-            " . ($profileImage ? "PROFIL_RESMI = :profil_resmi," : "") . "
-            TELEFON = :telefon,
-            EMAIL = :email,
+            KIMLIK_TURU = :kimlik_turu,
+            KIMLIK_NO = :kimlik_no,
             DOGUM_TARIHI = :dogum_tarihi,
             CINSIYET = :cinsiyet,
-            KIMLIK_NO = :kimlik_no,
-            KIMLIK_TURU = :kimlik_turu
+            TELEFON = :telefon,
+            EMAIL = :email,
+            REFERANS = :referans,
+            ACIKLAMA = :aciklama,
+            PROFIL_RESMI = :profil_resmi
             WHERE ID = :id";
 
         $params = [
-            ':ad_soyad' => $data['fullName'],
-            ':telefon' => $data['phone'],
-            ':email' => $data['email'],
-            ':dogum_tarihi' => $data['birthDate'],
-            ':cinsiyet' => $data['gender'],
-            ':kimlik_no' => $data['identityNo'],
-            ':kimlik_turu' => $data['identityType'],
-            ':id' => $id
+            ':ad_soyad' => trim($data['fullName']),
+            ':kimlik_turu' => trim($data['idType']),
+            ':kimlik_no' => trim($data['idNumber']),
+            ':dogum_tarihi' => trim($data['birthDate']),
+            ':cinsiyet' => trim($data['gender']),
+            ':telefon' => trim($data['phone']),
+            ':email' => trim($data['email']),
+            ':referans' => isset($data['reference']) ? trim($data['reference']) : null,
+            ':aciklama' => isset($data['emptyField']) ? trim($data['emptyField']) : null,
+            ':profil_resmi' => $profileImage,
+            ':id' => $patientId
         ];
 
-        if ($profileImage) {
-            $params[':profil_resmi'] = $profileImage;
-        }
-
         $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        return $stmt->execute($params);
 
-        return true;
     } catch (Exception $e) {
         error_log($e->getMessage());
-        return false;
+        throw new Exception("Güncelleme hatası: " . $e->getMessage());
     }
 }
 

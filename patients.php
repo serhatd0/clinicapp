@@ -31,9 +31,58 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <script src="assets/js/main.js"></script>
     <style>
         .patient-actions.show {
             display: flex;
+        }
+
+        .patient-actions {
+            display: none;
+            /* Varsayılan olarak gizli */
+            padding: 12px 15px;
+            gap: 12px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .patient-actions .btn {
+            flex: 1;
+            padding: 12px 15px;
+            color: #495057;
+            background: white;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .patient-actions .btn:hover {
+            background: #f8f9fa;
+            color: #212529;
+        }
+
+        .patient-actions .btn i {
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 767px) {
+            .patient-actions {
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .patient-actions .btn {
+                padding: 15px;
+            }
+
+            .patient-actions .btn i {
+                font-size: 1.3rem;
+            }
         }
 
         .sort-button {
@@ -48,6 +97,65 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         .sort-button i {
             font-size: 0.85rem;
+        }
+
+        .patient-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .patient-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+        }
+
+        .patient-main {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .patient-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .patient-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid #e9ecef;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .patient-image:hover {
+            transform: scale(1.1);
+        }
+
+        .patient-profile-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid #e9ecef;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .patient-profile-image:hover {
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -72,29 +180,39 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="patient-list">
             <?php foreach ($patients as $patient): ?>
                 <div class="patient-item">
-                    <div class="patient-info" onclick="toggleActions(this)">
-                        <div class="patient-name"><?php echo htmlspecialchars($patient['AD_SOYAD']); ?></div>
-                        <div class="patient-details">
-                            <i class="fas fa-phone"></i> <?php echo htmlspecialchars($patient['TELEFON']); ?> •
-                            <i class="fas fa-calendar-plus"></i> <?php echo htmlspecialchars($patient['KAYIT_TARIHI']); ?>
+                    <div class="patient-main" onclick="toggleActions(this)">
+                        <div class="patient-image">
+                            <img src="<?php echo !empty($patient['PROFIL_RESMI']) ? 'uploads/profiles/' . $patient['PROFIL_RESMI'] : 'assets/images/default-avatar.jpg'; ?>"
+                                alt="<?php echo htmlspecialchars($patient['AD_SOYAD']); ?>"
+                                class="rounded-circle patient-profile-image"
+                                style="width: 80px; height: 80px; object-fit: cover; cursor: pointer; transition: transform 0.3s ease;"
+                                onclick="showFullImage(this.src)">
+                        </div>
+                        <div class="patient-info">
+                            <div class="patient-name"><?php echo htmlspecialchars($patient['AD_SOYAD']); ?></div>
+                            <div class="patient-details">
+                                <i class="fas fa-phone"></i> <?php echo htmlspecialchars($patient['TELEFON']); ?> •
+                                <i class="fas fa-calendar-plus"></i>
+                                <?php echo htmlspecialchars($patient['KAYIT_TARIHI']); ?>
+                            </div>
                         </div>
                     </div>
                     <div class="patient-actions">
-                        <a href="edit.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
+                        <a href="edit.php?patient=<?php echo $patient['ID']; ?>" class="btn">
                             <i class="fas fa-edit"></i>
-                            <span>Düzenle</span>
+
                         </a>
-                        <a href="gallery.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
+                        <a href="gallery.php?patient=<?php echo $patient['ID']; ?>" class="btn">
                             <i class="fas fa-camera"></i>
-                            <span>Galeri</span>
+
                         </a>
-                        <a href="patient_appointments.php?id=<?php echo $patient['ID']; ?>" class="action-button">
+                        <a href="patient_appointments.php?id=<?php echo $patient['ID']; ?>" class="btn">
                             <i class="fas fa-calendar"></i>
-                            <span>Randevu</span>
+
                         </a>
-                        <a href="payment.php?patient=<?php echo $patient['ID']; ?>" class="action-button">
+                        <a href="payment.php?patient=<?php echo $patient['ID']; ?>" class="btn">
                             <i class="fas fa-dollar-sign"></i>
-                            <span>Ödeme</span>
+
                         </a>
                     </div>
                 </div>
@@ -141,13 +259,13 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
         function toggleActions(element) {
             // Tüm açık action panellerini kapat
             document.querySelectorAll('.patient-actions.show').forEach(panel => {
-                if (panel !== element.nextElementSibling) {
+                if (panel !== element.parentElement.querySelector('.patient-actions')) {
                     panel.classList.remove('show');
                 }
             });
 
             // Tıklanan hastanın action panelini aç/kapat
-            element.nextElementSibling.classList.toggle('show');
+            element.parentElement.querySelector('.patient-actions').classList.toggle('show');
         }
     </script>
 </body>

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `hastalar` (
   `CREATED_AT` datetime NOT NULL,
   `STATUS` tinyint(1) DEFAULT 1,
   `KIMLIK_TURU` enum('tc','passport') NOT NULL,
-  `PROFIL_RESMI` varchar(255) DEFAULT NULL,
+  `PROFIL_RESMI` varchar(255) DEFAULT 'default-avatar.jpg',
   PRIMARY KEY (`ID`),
   UNIQUE KEY `KIMLIK_NO` (`KIMLIK_NO`),
   UNIQUE KEY `EMAIL` (`EMAIL`)

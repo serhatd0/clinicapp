@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($errors)) {
             $database = new Database();
             $db = $database->connect();
-            
+
             if (saveFormData($db, $_POST)) {
                 $success_message = "Kayıt başarıyla oluşturuldu!";
                 $_POST = array();
@@ -38,7 +38,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Yeni Kayıt</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
     <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        .profile-image:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        
+        /* Profil fotoğrafı seçme alanı için overlay efekti */
+        label[for="profile_image"] {
+            position: relative;
+            display: inline-block;
+        }
+        
+        label[for="profile_image"]::after {
+            content: '\f030';  /* Kamera ikonu */
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            position: absolute;
+            bottom: 25px;
+            right: 0;
+            background: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0d6efd;
+            border: 2px solid #e9ecef;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        label[for="profile_image"]:hover::after {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
@@ -66,9 +105,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="row justify-content-center">
             <div class="col-md-8 col-lg-6">
                 <div class="form-container">
-                    <h2 class="form-title">Hasta Kayıt Formu</h2>
-                    
-                    <form method="POST" action="" class="needs-validation" novalidate>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <a href="patients.php" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Geri
+                        </a>
+                    </div>
+
+                    <form method="POST" action="" class="needs-validation" novalidate enctype="multipart/form-data">
+                        <!-- Profil Fotoğrafı Seçimi -->
+                        <div class="text-center mb-4">
+                            <label for="profile_image" style="cursor: pointer;">
+                                <img src="assets/images/default-avatar.jpg" 
+                                    alt="Profil" 
+                                    class="profile-image mb-3"
+                                    id="profilePreview"
+                                    style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #e9ecef; transition: all 0.3s ease;">
+                            </label>
+                            <div>
+                                <input type="file" 
+                                    id="profile_image" 
+                                    name="profile_image" 
+                                    class="d-none" 
+                                    accept="image/jpeg,image/png,image/jpg"
+                                    onchange="previewImage(this)">
+                            </div>
+                        </div>
+
                         <!-- Kişisel Bilgiler -->
                         <div class="form-section">
                             <h3 class="form-section-title">Kişisel Bilgiler</h3>
@@ -263,7 +325,69 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/tr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <!-- Custom JS -->
     <script src="assets/js/main.js"></script>
+    <script>
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    document.getElementById('profilePreview').src = e.target.result;
+                    // Seçilen dosya bilgilerini konsola yazdır
+                    const file = input.files[0];
+                    console.log('Dosya Bilgileri:', {
+                        'Dosya Adı': file.name,
+                        'Dosya Boyutu': (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                        'Dosya Tipi': file.type
+                    });
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+                
+                // Dosya boyutu kontrolü
+                const fileSize = input.files[0].size / 1024 / 1024; // MB cinsinden
+                if (fileSize > 5) {
+                    showAlert('Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.', 'danger');
+                    input.value = '';
+                    return;
+                }
+                
+                // Dosya tipi kontrolü
+                const fileType = input.files[0].type;
+                const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                if (!validTypes.includes(fileType)) {
+                    showAlert('Sadece JPG ve PNG formatları desteklenir.', 'danger');
+                    input.value = '';
+                    return;
+                }
+            }
+        }
+        
+        // Form submit öncesi kontrol
+        document.querySelector('form').addEventListener('submit', function(e) {
+            // Form verilerini konsola yazdır
+            const formData = new FormData(this);
+            console.log('Form Verileri:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key, ':', value);
+            }
+            
+            // Dosya bilgilerini konsola yazdır
+            const fileInput = document.getElementById('profile_image');
+            if (fileInput.files.length > 0) {
+                console.log('Yüklenecek Dosya:', {
+                    'Dosya Adı': fileInput.files[0].name,
+                    'Dosya Boyutu': (fileInput.files[0].size / 1024 / 1024).toFixed(2) + ' MB',
+                    'Dosya Tipi': fileInput.files[0].type
+                });
+            }
+            
+            return true;
+        });
+    </script>
 </body>
 </html> 
