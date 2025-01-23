@@ -244,6 +244,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['taksit_id']) && isset
             ':odeme_tutari' => $odemeTutari
         ]);
         
+        // Tüm taksitlerin ödenip ödenmediğini kontrol et
+        $stmt = $db->prepare("
+            SELECT COUNT(*) as odenmemis_taksit
+            FROM taksitler 
+            WHERE BORC_ID = :borc_id 
+            AND ODENEN_TUTAR < TUTAR
+        ");
+        
+        $stmt->execute([':borc_id' => $taksit['BORC_ID']]);
+        $odenmemisTaksit = $stmt->fetch(PDO::FETCH_ASSOC)['odenmemis_taksit'];
+        
+        // Tüm taksitler ödendiyse planı pasife çek
+        if ($odenmemisTaksit == 0) {
+            $stmt = $db->prepare("
+                UPDATE hasta_borc 
+                SET AKTIF = 0 
+                WHERE ID = :borc_id
+            ");
+            
+            $stmt->execute([':borc_id' => $taksit['BORC_ID']]);
+        }
+
         // Kalan taksitlerin tutarlarını güncelle
         $stmt = $db->prepare("
             SELECT COUNT(*) as kalan_taksit_sayisi
