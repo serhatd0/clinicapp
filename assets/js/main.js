@@ -104,30 +104,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Flatpickr tarih seçici konfigürasyonu
-  const birthDateInput = document.getElementById("birthDate");
-  if (birthDateInput) {
-    flatpickr("#birthDate", {
-      locale: "tr",
-      dateFormat: "Y-m-d",
-      maxDate: new Date(),
-      disableMobile: false,
-      monthSelectorType: "static",
-      yearSelectorType: "static",
-      altInput: true,
-      altFormat: "d F Y",
-      theme: "material_green",
-      placeholder: "Doğum tarihinizi seçin",
-      plugins: [
-        new monthSelectPlugin({
-          shorthand: true,
-          dateFormat: "Y-m-d",
-          altFormat: "F Y",
-        }),
-      ],
-    });
-  }
-
   document.getElementById("fullName").addEventListener("input", function (e) {
     const value = e.target.value;
     // Sadece harf ve boşluk karakterlerine izin ver

@@ -3,6 +3,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Kullanıcı silme yetkisi kontrolü
+checkPagePermission('kullanici_sil');
+
 // Sadece admin yetkisi olanlar silebilir
 if (!isAdmin()) {
     header('Location: index.php');

@@ -5,7 +5,7 @@ require_once 'includes/functions.php';
 $database = new Database();
 $db = $database->connect();
 
-$hasta_id = isset($_GET['patient']) ? (int)$_GET['patient'] : 0;
+$hasta_id = isset($_GET['patient']) ? (int) $_GET['patient'] : 0;
 
 if (!$hasta_id) {
     header('Location: patients.php');
@@ -50,56 +50,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
     $uploadDate = isset($_POST['upload_date']) ? $_POST['upload_date'] : date('Y-m-d');
     $dateDescription = $_POST['date_description'] ?? null;
     $uploadDir = 'uploads/patients/' . $hasta_id . '/' . $uploadDate . '/';
-    
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
 
     foreach ($_FILES['photos']['tmp_name'] as $key => $tmp_name) {
         if ($_FILES['photos']['error'][$key] == 0) {
-            $fileInfo = pathinfo($_FILES['photos']['name'][$key]);
-            $fileName = date('YmdHis') . '-' . uniqid() . '.' . $fileInfo['extension'];
-            $filePath = $uploadDir . $fileName;
-            
-            // Resmi sıkıştır ve boyutlandır
-            $image = imagecreatefromstring(file_get_contents($tmp_name));
-            
-            // Orijinal boyutları al
-            $width = imagesx($image);
-            $height = imagesy($image);
-            
-            // Maksimum boyutlar
-            $maxWidth = 1920;
-            $maxHeight = 1080;
-            
-            // Yeni boyutları hesapla
-            if ($width > $maxWidth || $height > $maxHeight) {
-                $ratio = min($maxWidth / $width, $maxHeight / $height);
-                $newWidth = round($width * $ratio);
-                $newHeight = round($height * $ratio);
-                
-                $resized = imagecreatetruecolor($newWidth, $newHeight);
-                imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                $image = $resized;
-            }
-            
-            // Resmi kaydet
-            switch (strtolower($fileInfo['extension'])) {
-                case 'jpg':
-                case 'jpeg':
-                    imagejpeg($image, $filePath, 80); // 80 kalite değeri
-                    break;
-                case 'png':
-                    imagepng($image, $filePath, 8); // 8/9 sıkıştırma seviyesi
-                    break;
-                case 'gif':
-                    imagegif($image, $filePath);
-                    break;
-            }
-            
-            imagedestroy($image);
-            
-            if (file_exists($filePath)) {
+            // Fotoğraf bilgilerini hazırla
+            $photo = [
+                'name' => $_FILES['photos']['name'][$key],
+                'type' => $_FILES['photos']['type'][$key],
+                'tmp_name' => $_FILES['photos']['tmp_name'][$key],
+                'error' => $_FILES['photos']['error'][$key],
+                'size' => $_FILES['photos']['size'][$key]
+            ];
+
+            try {
+                $fileName = saveUploadedPhoto($photo, $uploadDir);
+                $filePath = $uploadDir . $fileName;
                 $stmt = $db->prepare("INSERT INTO hasta_galerileri 
                                     (HASTA_ID, DOSYA_ADI, DOSYA_YOLU, YUKLENME_TARIHI, TARIH_ACIKLAMA) 
                                     VALUES (:hasta_id, :dosya_adi, :dosya_yolu, :yuklenme_tarihi, :tarih_aciklama)");
@@ -110,6 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                     ':yuklenme_tarihi' => $uploadDate,
                     ':tarih_aciklama' => $dateDescription
                 ]);
+            } catch (Exception $e) {
+                error_log('Fotoğraf yükleme hatası: ' . $e->getMessage());
+                continue;
             }
         }
     }
@@ -120,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
 
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -128,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
     <link href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" rel="stylesheet">
     <style>
         .date-info {
@@ -137,53 +106,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
             border-radius: 8px;
             margin-bottom: 20px;
         }
+
         .date-info .description {
             color: #666;
             font-style: italic;
             margin-top: 5px;
         }
+
         .gallery-item img {
             transition: transform 0.3s ease;
         }
+
         .gallery-item:hover img {
             transform: scale(1.05);
         }
+
         .photo-checkbox {
             position: absolute;
             top: 10px;
             left: 10px;
             z-index: 2;
         }
+
         .photo-checkbox .form-check-input {
             width: 22px;
             height: 22px;
             background-color: rgba(255, 255, 255, 0.9);
             border: 2px solid rgba(255, 255, 255, 0.9);
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         .photo-checkbox .form-check-input:checked {
             background-color: #28a745;
             border-color: #28a745;
         }
+
         .delete-selected {
             display: none;
             margin-left: 10px;
         }
+
         .gallery-item {
             position: relative;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        
+
         .gallery-item-actions {
             position: absolute;
             top: 10px;
             right: 10px;
             z-index: 2;
         }
-        
+
         .gallery-item-actions .btn {
             width: 36px;
             height: 36px;
@@ -194,10 +171,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
             color: white;
             border-radius: 4px;
             border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             font-size: 16px;
         }
-        
+
         .btn-group .btn {
             width: 40px;
             height: 40px;
@@ -208,22 +185,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
             margin-left: 5px;
             font-size: 18px;
         }
-        
+
         .btn-group .btn-success {
             background-color: #28a745;
         }
-        
+
         .btn-group .btn-danger {
             background-color: #dc3545;
         }
-        
+
         .gallery-item-actions .btn:hover,
         .btn-group .btn:hover {
             opacity: 1;
             transform: scale(1.05);
             transition: all 0.2s ease;
         }
-        
+
         .select-all-wrapper {
             display: flex;
             align-items: center;
@@ -235,9 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
         }
     </style>
 </head>
+
 <body>
     <?php include 'includes/header.php'; ?>
-    
+
     <div class="container py-4 content-area">
         <div class="card mb-4">
             <div class="card-body">
@@ -272,14 +250,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                                 <?php echo turkishDate($tarih); ?>
                             </h3>
                             <div class="btn-group" style="margin-left: 10px;">
-                                <button class="btn btn-sm btn-success mr-2" 
-                                        onclick="quickUpload('<?php echo $tarih; ?>')" 
-                                        title="Bu tarihe fotoğraf ekle">
+                                <button class="btn btn-sm btn-success mr-2" onclick="quickUpload('<?php echo $tarih; ?>')"
+                                    title="Bu tarihe fotoğraf ekle">
                                     <i class="fas fa-plus"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger" 
-                                        onclick="deleteAllPhotos('<?php echo $tarih; ?>')" 
-                                        title="Bu tarihin tüm fotoğraflarını sil">
+                                <button class="btn btn-sm btn-danger" onclick="deleteAllPhotos('<?php echo $tarih; ?>')"
+                                    title="Bu tarihin tüm fotoğraflarını sil">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -294,12 +270,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                         <div class="col-12 mb-2">
                             <div class="select-all-wrapper">
                                 <div class="form-check">
-                                    <input class="form-check-input select-all" type="checkbox" 
-                                           data-date="<?php echo $tarih; ?>">
+                                    <input class="form-check-input select-all" type="checkbox"
+                                        data-date="<?php echo $tarih; ?>">
                                     <label class="form-check-label">Tümünü Seç</label>
                                 </div>
-                                <button class="btn btn-danger btn-sm delete-selected" 
-                                        data-date="<?php echo $tarih; ?>">
+                                <button class="btn btn-danger btn-sm delete-selected" data-date="<?php echo $tarih; ?>">
                                     <i class="fas fa-trash-alt me-1"></i> Seçilenleri Sil
                                 </button>
                             </div>
@@ -308,29 +283,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                             <div class="col-6 col-md-4 col-lg-3">
                                 <div class="gallery-item">
                                     <div class="form-check photo-checkbox">
-                                        <input class="form-check-input photo-select" 
-                                               type="checkbox" 
-                                               value="<?php echo $foto['ID']; ?>" 
-                                               data-date="<?php echo $tarih; ?>">
+                                        <input class="form-check-input photo-select" type="checkbox"
+                                            value="<?php echo $foto['ID']; ?>" data-date="<?php echo $tarih; ?>">
                                     </div>
-                                    <a href="<?php echo $foto['DOSYA_YOLU']; ?>" 
-                                       class="glightbox" 
-                                       data-gallery="gallery-<?php echo $tarih; ?>"
-                                       data-description="<?php echo turkishDate($tarih); ?>">
-                                        <img src="<?php echo $foto['DOSYA_YOLU']; ?>" 
-                                             class="img-fluid" 
-                                             alt="Hasta Fotoğrafı"
-                                             data-photo-id="<?php echo $foto['ID']; ?>">
+                                    <a href="<?php echo $foto['DOSYA_YOLU']; ?>" class="glightbox"
+                                        data-gallery="gallery-<?php echo $tarih; ?>"
+                                        data-description="<?php echo turkishDate($tarih); ?>">
+                                        <img src="<?php echo $foto['DOSYA_YOLU']; ?>" class="img-fluid" alt="Hasta Fotoğrafı"
+                                            data-photo-id="<?php echo $foto['ID']; ?>">
                                     </a>
                                     <div class="gallery-item-actions">
                                         <div class="btn-group">
-                                            <button class="btn btn-light" onclick="rotateImage(<?php echo $foto['ID']; ?>, 'left')" title="Sola Döndür">
+                                            <button class="btn btn-light" onclick="rotateImage(<?php echo $foto['ID']; ?>, 'left')"
+                                                title="Sola Döndür">
                                                 <i class="fas fa-undo"></i>
                                             </button>
-                                            <button class="btn btn-light" onclick="rotateImage(<?php echo $foto['ID']; ?>, 'right')" title="Sağa Döndür">
+                                            <button class="btn btn-light" onclick="rotateImage(<?php echo $foto['ID']; ?>, 'right')"
+                                                title="Sağa Döndür">
                                                 <i class="fas fa-redo"></i>
                                             </button>
-                                            <button class="btn btn-danger" onclick="deletePhoto(<?php echo $foto['ID']; ?>)" title="Sil">
+                                            <button class="btn btn-danger" onclick="deletePhoto(<?php echo $foto['ID']; ?>)"
+                                                title="Sil">
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </div>
@@ -356,18 +329,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Yükleme Tarihi</label>
-                            <input type="date" class="form-control" name="upload_date" 
-                                   value="<?php echo date('Y-m-d'); ?>" required>
+                            <input type="date" class="form-control" name="upload_date"
+                                value="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Tarih Açıklaması</label>
-                            <textarea class="form-control" name="date_description" rows="3" 
-                                     placeholder="Bu tarihe ait genel bir açıklama yazın..."></textarea>
+                            <textarea class="form-control" name="date_description" rows="3"
+                                placeholder="Bu tarihe ait genel bir açıklama yazın..."></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Fotoğraflar</label>
-                            <input type="file" class="form-control" name="photos[]" 
-                                   multiple accept="image/*" required id="photoInput">
+                            <input type="file" class="form-control" name="photos[]" multiple accept="image/*" required
+                                id="photoInput">
                         </div>
                         <div id="photoPreview" class="row g-3">
                             <!-- Fotoğraf önizlemeleri burada gösterilecek -->
@@ -391,21 +364,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST" enctype="multipart/form-data" id="quickUploadForm">
-                    <div class="modal-body">
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                         <input type="hidden" name="upload_date" id="quickUploadDate">
                         <div class="mb-3">
                             <label class="form-label">Fotoğraflar</label>
-                            <input type="file" class="form-control" name="photos[]" 
-                                   multiple accept="image/*" required>
+                            <input type="file" class="form-control" name="photos[]" multiple accept="image/*" required>
                         </div>
                         <div id="quickPhotoPreview" class="row g-3">
                             <!-- Fotoğraf önizlemeleri burada gösterilecek -->
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer sticky-bottom bg-white">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                         <button type="submit" class="btn btn-success">Yükle</button>
                     </div>
+                    <div style="height: 80px;"></div>
                 </form>
             </div>
         </div>
@@ -438,13 +411,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
 
     <!-- Önce jQuery yüklenmeli -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
+
     <!-- Sonra Bootstrap ve diğer bağımlılıklar -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/5.3.0/ekko-lightbox.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
-    
+
     <!-- En son kendi JS dosyamız -->
     <script src="assets/js/main.js"></script>
 
@@ -465,13 +438,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
         });
 
         // Fotoğraf önizleme
-        document.getElementById('photoInput').addEventListener('change', function(e) {
+        document.getElementById('photoInput').addEventListener('change', function (e) {
             const container = document.getElementById('photoPreview');
             container.innerHTML = '';
-            
+
             Array.from(this.files).forEach((file) => {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     const col = document.createElement('div');
                     col.className = 'col-md-4';
                     col.innerHTML = `
@@ -486,7 +459,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
         });
 
         function deletePhoto(id) {
-            showDeleteConfirm('Bu fotoğrafı silmek istediğinizden emin misiniz?', function() {
+            showDeleteConfirm('Bu fotoğrafı silmek istediğinizden emin misiniz?', function () {
                 window.location.href = 'delete_photo.php?id=' + id;
             });
         }
@@ -499,13 +472,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
         }
 
         // Hızlı yükleme önizleme
-        document.querySelector('#quickUploadModal input[type="file"]').addEventListener('change', function(e) {
+        document.querySelector('#quickUploadModal input[type="file"]').addEventListener('change', function (e) {
             const container = document.getElementById('quickPhotoPreview');
             container.innerHTML = '';
-            
+
             Array.from(this.files).forEach((file) => {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     const col = document.createElement('div');
                     col.className = 'col-6';
                     col.innerHTML = `
@@ -529,7 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
             deleteModal.show();
         }
 
-        document.getElementById('confirmDelete').addEventListener('click', function() {
+        document.getElementById('confirmDelete').addEventListener('click', function () {
             if (deleteCallback) {
                 deleteCallback();
                 deleteModal.hide();
@@ -538,31 +511,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
 
         // Tarih bazlı toplu silme
         function deleteAllPhotos(date) {
-            showDeleteConfirm('Bu tarihe ait tüm fotoğrafları silmek istediğinizden emin misiniz?', function() {
+            showDeleteConfirm('Bu tarihe ait tüm fotoğrafları silmek istediğinizden emin misiniz?', function () {
                 window.location.href = 'delete_photo.php?date=' + date + '&patient=<?php echo $hasta_id; ?>';
             });
         }
 
         // Çoklu seçim işlemleri
         document.querySelectorAll('.select-all').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            checkbox.addEventListener('change', function () {
                 const date = this.dataset.date;
                 const photoCheckboxes = document.querySelectorAll(`.photo-select[data-date="${date}"]`);
                 const deleteButton = document.querySelector(`.delete-selected[data-date="${date}"]`);
-                
+
                 photoCheckboxes.forEach(cb => cb.checked = this.checked);
                 deleteButton.style.display = this.checked ? 'block' : 'none';
             });
         });
 
         document.querySelectorAll('.photo-select').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            checkbox.addEventListener('change', function () {
                 const date = this.dataset.date;
                 const deleteButton = document.querySelector(`.delete-selected[data-date="${date}"]`);
                 const checkedPhotos = document.querySelectorAll(`.photo-select[data-date="${date}"]:checked`);
                 const selectAll = document.querySelector(`.select-all[data-date="${date}"]`);
                 const allPhotos = document.querySelectorAll(`.photo-select[data-date="${date}"]`);
-                
+
                 deleteButton.style.display = checkedPhotos.length > 0 ? 'block' : 'none';
                 selectAll.checked = checkedPhotos.length === allPhotos.length;
                 selectAll.indeterminate = checkedPhotos.length > 0 && checkedPhotos.length < allPhotos.length;
@@ -570,13 +543,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
         });
 
         document.querySelectorAll('.delete-selected').forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function () {
                 const date = this.dataset.date;
                 const checkedPhotos = document.querySelectorAll(`.photo-select[data-date="${date}"]:checked`);
                 const photoIds = Array.from(checkedPhotos).map(cb => cb.value);
-                
+
                 if (photoIds.length) {
-                    showDeleteConfirm(`${photoIds.length} fotoğrafı silmek istediğinizden emin misiniz?`, function() {
+                    showDeleteConfirm(`${photoIds.length} fotoğrafı silmek istediğinizden emin misiniz?`, function () {
                         window.location.href = 'delete_photo.php?ids=' + photoIds.join(',');
                     });
                 }
@@ -601,26 +574,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                     direction: direction
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Sayfayı yenilemeden resmi güncelle
-                    const img = document.querySelector(`[data-photo-id="${imageId}"]`);
-                    if (img) {
-                        // Cache'i önlemek için timestamp ekle
-                        const newSrc = img.src.split('?')[0] + '?t=' + new Date().getTime();
-                        img.src = newSrc;
-                        img.style.opacity = '1';
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Sayfayı yenilemeden resmi güncelle
+                        const img = document.querySelector(`[data-photo-id="${imageId}"]`);
+                        if (img) {
+                            // Cache'i önlemek için timestamp ekle
+                            const newSrc = img.src.split('?')[0] + '?t=' + new Date().getTime();
+                            img.src = newSrc;
+                            img.style.opacity = '1';
+                        }
+                    } else {
+                        alert('Resim döndürülürken bir hata oluştu');
                     }
-                } else {
-                    alert('Resim döndürülürken bir hata oluştu');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Bir hata oluştu');
-            });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Bir hata oluştu');
+                });
         }
     </script>
 </body>
-</html> 
+
+</html>

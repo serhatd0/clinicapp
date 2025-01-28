@@ -1,6 +1,10 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
+require_once 'includes/auth.php';
+
+// Randevu düzenleme yetkisi kontrolü
+checkPagePermission('randevu_duzenle');
 
 $database = new Database();
 $db = $database->connect();
@@ -133,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
     <?php include 'includes/header.php'; ?>
     
-    <div class="container py-4 content-area">
+    <div class="container py-4 content-area ">
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="appointment-card">
@@ -220,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                         <?php endif; ?>
 
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 mb-5">
                             <button type="submit" class="btn btn-success flex-grow-1">
                                 <i class="fas fa-save me-2"></i>Kaydet
                             </button>

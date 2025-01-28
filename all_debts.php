@@ -1,6 +1,15 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
+require_once 'includes/auth.php';
+
+// Borç listesi erişim kontrolü
+checkPagePermission('odeme_listesi_erisim');
+
+// Butonlar için yetki kontrolleri
+$canAddDebt = hasPermission('odeme_ekle');
+$canEditDebt = hasPermission('odeme_duzenle');
+$canDeleteDebt = hasPermission('odeme_sil');
 
 $database = new Database();
 $db = $database->connect();
@@ -73,6 +82,13 @@ $borclar = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                     class="btn btn-sm btn-primary">
                                                     <i class="fas fa-eye"></i> Detay
                                                 </a>
+
+                                                <?php if ($canDeleteDebt): ?>
+                                                    <button type="button" class="btn btn-danger btn-sm"
+                                                        onclick="deleteDebt(<?php echo $borc['ID']; ?>)">
+                                                        <i class="fas fa-trash"></i> Sil
+                                                    </button>
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -85,8 +101,84 @@ $borclar = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Silme Onay Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Borç Planını Sil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Bu borç planını silmek istediğinizden emin misiniz?</p>
+                    <p class="text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Bu işlem geri alınamaz ve tüm ödeme kayıtları silinecektir!
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash me-2"></i>Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php include 'includes/nav.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let deleteModal;
+        let borcToDelete;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+
+            // Silme onay butonuna tıklandığında
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+                if (borcToDelete) {
+                    // AJAX ile silme işlemi
+                    fetch('delete_debt.php?id=' + borcToDelete)
+                        .then(response => response.json())
+                        .then(data => {
+                            deleteModal.hide();
+                            if (data.success) {
+                                // Başarılı silme işlemi
+                                showAlert('success', 'Borç planı başarıyla silindi!');
+                                setTimeout(() => location.reload(), 1500);
+                            } else {
+                                // Hata durumu
+                                showAlert('danger', 'Silme işlemi başarısız: ' + data.error);
+                            }
+                        })
+                        .catch(error => {
+                            deleteModal.hide();
+                            showAlert('danger', 'Bir hata oluştu: ' + error);
+                        });
+                }
+            });
+        });
+
+        function deleteDebt(borcId) {
+            borcToDelete = borcId;
+            deleteModal.show();
+        }
+
+        // Alert gösterme fonksiyonu
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show floating-alert`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+
+            // 3 saniye sonra alert'i kaldır
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+    </script>
 </body>
 
 </html>

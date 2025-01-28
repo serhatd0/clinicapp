@@ -61,7 +61,6 @@ function saveFormData($db, $data)
     try {
         $profileImage = 'default-avatar.jpg'; // Varsayılan değer
 
-
         // Profil resmi yükleme işlemi
         if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
             $uploadDir = 'uploads/profiles/';
@@ -71,36 +70,41 @@ function saveFormData($db, $data)
             }
 
             $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-            error_log('File Type: ' . $_FILES['profile_image']['type']);
-
             if (!in_array($_FILES['profile_image']['type'], $allowedTypes)) {
-                error_log('Invalid file type: ' . $_FILES['profile_image']['type']);
-
                 throw new Exception('Sadece JPG ve PNG formatları desteklenir.');
             }
 
             if ($_FILES['profile_image']['size'] > 5 * 1024 * 1024) {
-                error_log('File too large: ' . $_FILES['profile_image']['size']);
                 throw new Exception('Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.');
             }
 
             $extension = pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION);
             $fileName = uniqid() . '.' . $extension;
             $filePath = $uploadDir . $fileName;
-            error_log('File Path: ' . $filePath);
 
             if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $filePath)) {
-                error_log('File uploaded successfully');
-                // Resmi optimize et
+                // EXIF bilgisini al ve resmi düzelt
                 $image = imagecreatefromstring(file_get_contents($filePath));
-                if ($image === false) {
-                    error_log('Failed to create image from string');
-                    throw new Exception('Resim işlenirken bir hata oluştu.');
+                if ($extension != 'png') {
+                    $exif = @exif_read_data($filePath);
+                    if (!empty($exif['Orientation'])) {
+                        switch ($exif['Orientation']) {
+                            case 3:
+                                $image = imagerotate($image, 180, 0);
+                                break;
+                            case 6:
+                                $image = imagerotate($image, -90, 0);
+                                break;
+                            case 8:
+                                $image = imagerotate($image, 90, 0);
+                                break;
+                        }
+                    }
                 }
 
+                // Boyutları al ve yeniden boyutlandır
                 $width = imagesx($image);
                 $height = imagesy($image);
-                error_log('Original dimensions: ' . $width . 'x' . $height);
 
                 // Maksimum boyutlar
                 $maxWidth = 800;
@@ -113,6 +117,13 @@ function saveFormData($db, $data)
                     $newHeight = round($height * $ratio);
 
                     $resized = imagecreatetruecolor($newWidth, $newHeight);
+
+                    // PNG şeffaflığını koru
+                    if ($extension == 'png') {
+                        imagealphablending($resized, false);
+                        imagesavealpha($resized, true);
+                    }
+
                     imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
                     $image = $resized;
                 }
@@ -121,7 +132,7 @@ function saveFormData($db, $data)
                 switch (strtolower($extension)) {
                     case 'jpg':
                     case 'jpeg':
-                        imagejpeg($image, $filePath, 80);
+                        imagejpeg($image, $filePath, 85);
                         break;
                     case 'png':
                         imagepng($image, $filePath, 8);
@@ -130,8 +141,6 @@ function saveFormData($db, $data)
 
                 imagedestroy($image);
                 $profileImage = $fileName;
-            } else {
-                error_log('Fotoğraf yükleme hatası: ' . error_get_last()['message']);
             }
         } else {
             error_log('No file uploaded or upload error: ' . print_r($_FILES['profile_image']['error'] ?? 'not set', true));
@@ -258,10 +267,23 @@ function updatePatient($db, $patientId, $data)
             $filePath = $uploadDir . $fileName;
 
             if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $filePath)) {
-                // Resmi optimize et
+                // EXIF bilgisini al ve resmi düzelt
                 $image = imagecreatefromstring(file_get_contents($filePath));
-                if ($image === false) {
-                    throw new Exception('Resim işlenirken bir hata oluştu.');
+                if ($extension != 'png') {
+                    $exif = @exif_read_data($filePath);
+                    if (!empty($exif['Orientation'])) {
+                        switch ($exif['Orientation']) {
+                            case 3:
+                                $image = imagerotate($image, 180, 0);
+                                break;
+                            case 6:
+                                $image = imagerotate($image, -90, 0);
+                                break;
+                            case 8:
+                                $image = imagerotate($image, 90, 0);
+                                break;
+                        }
+                    }
                 }
 
                 $width = imagesx($image);
@@ -277,7 +299,14 @@ function updatePatient($db, $patientId, $data)
                     $newWidth = round($width * $ratio);
                     $newHeight = round($height * $ratio);
 
-                    $resized = imagecreatetruecolor($newWidth, $newHeight);
+                    $resized = imagecreatetruecolor($newWidth, height: $newHeight);
+
+                    // PNG şeffaflığını koru
+                    if ($extension == 'png') {
+                        imagealphablending($resized, false);
+                        imagesavealpha($resized, true);
+                    }
+
                     imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
                     $image = $resized;
                 }
@@ -286,7 +315,7 @@ function updatePatient($db, $patientId, $data)
                 switch (strtolower($extension)) {
                     case 'jpg':
                     case 'jpeg':
-                        imagejpeg($image, $filePath, 80);
+                        imagejpeg($image, $filePath, 85);
                         break;
                     case 'png':
                         imagepng($image, $filePath, 8);
@@ -300,7 +329,6 @@ function updatePatient($db, $patientId, $data)
                     unlink($uploadDir . $profileImage);
                 }
                 $profileImage = $fileName;
-
             }
         }
 
@@ -314,7 +342,8 @@ function updatePatient($db, $patientId, $data)
             EMAIL = :email,
             REFERANS = :referans,
             ACIKLAMA = :aciklama,
-            PROFIL_RESMI = :profil_resmi
+            PROFIL_RESMI = :profil_resmi,
+            CREATED_AT = :created_at
             WHERE ID = :id";
 
         $params = [
@@ -328,6 +357,7 @@ function updatePatient($db, $patientId, $data)
             ':referans' => isset($data['reference']) ? trim($data['reference']) : null,
             ':aciklama' => isset($data['emptyField']) ? trim($data['emptyField']) : null,
             ':profil_resmi' => $profileImage,
+            ':created_at' => !empty($data['registerDate']) ? $data['registerDate'] : date('Y-m-d H:i:s'),
             ':id' => $patientId
         ];
 
@@ -384,108 +414,113 @@ function turkishDate($date)
     return strtr(date('d F Y', strtotime($date)), $aylar);
 }
 
-function saveUploadedPhoto($file, $patientId)
+function saveUploadedPhoto($file, $uploadDir)
 {
     try {
-        $uploadDir = 'uploads/photos/';
         if (!file_exists($uploadDir)) {
             mkdir($uploadDir, 0777, true);
         }
 
-        // Dosya kontrolü
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!in_array($file['type'], $allowedTypes)) {
+            throw new Exception('Sadece JPG ve PNG formatları desteklenir.');
+        }
+
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new Exception('Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.');
+        }
+
         $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowedTypes = ['jpg', 'jpeg', 'png'];
-
-        if (!in_array($extension, $allowedTypes)) {
-            throw new Exception('Geçersiz dosya türü. Sadece JPG ve PNG dosyaları yükleyebilirsiniz.');
-        }
-
-        $maxFileSize = 10 * 1024 * 1024; // 10MB limit
-        if ($file['size'] > $maxFileSize) {
-            throw new Exception('Dosya boyutu çok büyük. Maksimum 10MB yükleyebilirsiniz.');
-        }
-
-        // Benzersiz dosya adı oluştur
         $fileName = uniqid() . '.' . $extension;
         $filePath = $uploadDir . $fileName;
 
-        // Dosyayı yükle
-        if (!move_uploaded_file($file['tmp_name'], $filePath)) {
-            throw new Exception('Dosya yüklenirken bir hata oluştu.');
-        }
-
-        // GD ile görüntüyü işle
-        switch ($extension) {
-            case 'jpg':
-            case 'jpeg':
-                $source = imagecreatefromjpeg($filePath);
-                break;
-            case 'png':
-                $source = imagecreatefrompng($filePath);
-                break;
-            default:
-                throw new Exception('Desteklenmeyen dosya formatı');
-        }
-
-        if (!$source) {
-            throw new Exception('Görüntü işlenemedi');
-        }
-
-        // Görüntü boyutunu optimize et
-        $width = imagesx($source);
-        $height = imagesy($source);
-        $maxWidth = 2000;
-
-        if ($width > $maxWidth) {
-            $newWidth = $maxWidth;
-            $newHeight = ($height / $width) * $maxWidth;
-
-            $resized = imagecreatetruecolor($newWidth, $newHeight);
-
-            // PNG şeffaflığını koru
-            if ($extension == 'png') {
-                imagealphablending($resized, false);
-                imagesavealpha($resized, true);
+        if (move_uploaded_file($file['tmp_name'], $filePath)) {
+            // Görüntüyü doğru şekilde yükle
+            switch ($extension) {
+                case 'jpg':
+                case 'jpeg':
+                    $image = imagecreatefromjpeg($filePath);
+                    break;
+                case 'png':
+                    $image = imagecreatefrompng($filePath);
+                    break;
+                default:
+                    throw new Exception('Desteklenmeyen dosya formatı');
             }
 
-            imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-            imagedestroy($source);
-            $source = $resized;
+            // EXIF yönlendirmesini kontrol et ve düzelt
+            if ($extension != 'png') {
+                $exif = @exif_read_data($filePath);
+                if ($exif && isset($exif['Orientation'])) {
+                    switch ($exif['Orientation']) {
+                        case 3:
+                            $image = imagerotate($image, 180, 0);
+                            break;
+                        case 6:
+                            $image = imagerotate($image, -90, 0);
+                            break;
+                        case 8:
+                            $image = imagerotate($image, 90, 0);
+                            break;
+                    }
+                }
+            }
+
+            $width = imagesx($image);
+            $height = imagesy($image);
+
+            // Maksimum boyutlar
+            $maxWidth = 1200;
+            $maxHeight = 1200;
+
+            // Yeni boyutları hesapla
+            if ($width > $maxWidth || $height > $maxHeight) {
+                $ratio = min($maxWidth / $width, $maxHeight / $height);
+                $newWidth = round($width * $ratio);
+                $newHeight = round($height * $ratio);
+
+                $resized = imagecreatetruecolor($newWidth, $newHeight);
+
+                // PNG şeffaflığını koru
+                if ($extension == 'png') {
+                    imagealphablending($resized, false);
+                    imagesavealpha($resized, true);
+                    $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+                    imagefilledrectangle($resized, 0, 0, $newWidth, $newHeight, $transparent);
+                }
+
+                imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                imagedestroy($image);
+                $image = $resized;
+            }
+
+            // Resmi kaydet
+            switch ($extension) {
+                case 'jpg':
+                case 'jpeg':
+                    imagejpeg($image, $filePath, 90);
+                    break;
+                case 'png':
+                    imagepng($image, $filePath, 6);
+                    break;
+            }
+
+            imagedestroy($image);
+
+            // Dosya izinlerini ayarla
+            chmod($filePath, 0644);
+
+            return $fileName;
         }
 
-        // Kaliteyi ayarla ve kaydet
-        switch ($extension) {
-            case 'jpg':
-            case 'jpeg':
-                imagejpeg($source, $filePath, 90);
-                break;
-            case 'png':
-                imagepng($source, $filePath, 9);
-                break;
-        }
-
-        imagedestroy($source);
-
-        // Veritabanına kaydet
-        $database = new Database();
-        $db = $database->connect();
-
-        $stmt = $db->prepare("INSERT INTO hasta_galerileri (HASTA_ID, DOSYA_ADI, DOSYA_YOLU, YUKLENME_TARIHI) VALUES (:hasta_id, :dosya_adi, :dosya_yolu, :yuklenme_tarihi)");
-        $stmt->execute([
-            ':hasta_id' => $patientId,
-            ':dosya_adi' => $fileName,
-            ':dosya_yolu' => $filePath,
-            ':yuklenme_tarihi' => date('Y-m-d H:i:s')
-        ]);
-
-        return true;
-
+        throw new Exception('Dosya yüklenirken bir hata oluştu.');
     } catch (Exception $e) {
-        error_log($e->getMessage());
+        error_log('Fotoğraf kaydetme hatası: ' . $e->getMessage());
+        // Hata durumunda dosyayı temizle
         if (isset($filePath) && file_exists($filePath)) {
-            unlink($filePath); // Hata durumunda yüklenen dosyayı sil
+            unlink($filePath);
         }
-        return false;
+        throw $e;
     }
 }
 
@@ -943,4 +978,137 @@ function getOdemeTuruColor($tur)
         'havale' => 'info'
     ];
     return $renkler[$tur] ?? 'secondary';
+}
+
+function processAndSaveImage($file, $uploadDir, $oldImage = null)
+{
+    try {
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!in_array($file['type'], $allowedTypes)) {
+            throw new Exception('Sadece JPG ve PNG formatları desteklenir.');
+        }
+
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new Exception('Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.');
+        }
+
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $fileName = uniqid() . '.' . $extension;
+        $filePath = $uploadDir . $fileName;
+
+        if (move_uploaded_file($file['tmp_name'], $filePath)) {
+            // EXIF bilgisini al ve resmi düzelt
+            $image = imagecreatefromstring(file_get_contents($filePath));
+            if ($extension != 'png') {
+                $exif = @exif_read_data($filePath);
+                if (!empty($exif['Orientation'])) {
+                    switch ($exif['Orientation']) {
+                        case 3:
+                            $image = imagerotate($image, 180, 0);
+                            break;
+                        case 6:
+                            $image = imagerotate($image, -90, 0);
+                            break;
+                        case 8:
+                            $image = imagerotate($image, 90, 0);
+                            break;
+                    }
+                }
+            }
+
+            $width = imagesx($image);
+            $height = imagesy($image);
+
+            // Maksimum boyutlar
+            $maxWidth = 800;
+            $maxHeight = 800;
+
+            // Yeni boyutları hesapla
+            if ($width > $maxWidth || $height > $maxHeight) {
+                $ratio = min($maxWidth / $width, $maxHeight / $height);
+                $newWidth = round($width * $ratio);
+                $newHeight = round($height * $ratio);
+
+                $resized = imagecreatetruecolor($newWidth, $newHeight);
+
+                // PNG şeffaflığını koru
+                if ($extension == 'png') {
+                    imagealphablending($resized, false);
+                    imagesavealpha($resized, true);
+                }
+
+                imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                $image = $resized;
+            }
+
+            // Resmi kaydet
+            switch (strtolower($extension)) {
+                case 'jpg':
+                case 'jpeg':
+                    imagejpeg($image, $filePath, 85);
+                    break;
+                case 'png':
+                    imagepng($image, $filePath, 8);
+                    break;
+            }
+
+            imagedestroy($image);
+
+            // Eski fotoğrafı sil
+            if ($oldImage && $oldImage != 'default-avatar.jpg' && file_exists($uploadDir . $oldImage)) {
+                unlink($uploadDir . $oldImage);
+            }
+
+            return $fileName;
+        }
+
+        throw new Exception('Dosya yüklenirken bir hata oluştu.');
+    } catch (Exception $e) {
+        error_log('Resim işleme hatası: ' . $e->getMessage());
+        throw $e;
+    }
+}
+
+function savePatientPhotos($db, $patientId, $photos)
+{
+    try {
+        $uploadDir = 'uploads/gallery/';
+        $savedPhotos = [];
+
+        foreach ($photos['tmp_name'] as $key => $tmpName) {
+            if ($photos['error'][$key] === UPLOAD_ERR_OK) {
+                $photo = [
+                    'name' => $photos['name'][$key],
+                    'type' => $photos['type'][$key],
+                    'tmp_name' => $tmpName,
+                    'error' => $photos['error'][$key],
+                    'size' => $photos['size'][$key]
+                ];
+
+                $fileName = processAndSaveImage($photo, $uploadDir);
+
+                // Veritabanına kaydet
+                $stmt = $db->prepare("
+                    INSERT INTO hasta_galerileri (HASTA_ID, DOSYA_YOLU, YUKLENME_TARIHI)
+                    VALUES (:hasta_id, :dosya_yolu, NOW())
+                ");
+
+                $stmt->execute([
+                    ':hasta_id' => $patientId,
+                    ':dosya_yolu' => $uploadDir . $fileName
+                ]);
+
+                $savedPhotos[] = $fileName;
+            }
+        }
+
+        return $savedPhotos;
+    } catch (Exception $e) {
+        error_log('Fotoğraf kaydetme hatası: ' . $e->getMessage());
+        throw $e;
+    }
 }

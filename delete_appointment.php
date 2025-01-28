@@ -1,6 +1,10 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
+require_once 'includes/auth.php';
+
+// Randevu silme yetkisi kontrolü
+checkPagePermission('randevu_sil');
 
 if (!isset($_GET['id'])) {
     header('Location: appointments.php');

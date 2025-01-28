@@ -1,6 +1,10 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
+require_once 'includes/auth.php';
+
+// Randevu ekleme yetkisi kontrolü
+checkPagePermission('randevu_ekle');
 
 $database = new Database();
 $db = $database->connect();

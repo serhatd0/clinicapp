@@ -3,6 +3,14 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Ödeme listesi erişim kontrolü
+checkPagePermission('odeme_listesi_erisim');
+
+// Butonlar için yetki kontrolleri
+$canAddPayment = hasPermission('odeme_ekle');
+$canEditPayment = hasPermission('odeme_duzenle');
+$canDeletePayment = hasPermission('odeme_sil');
+
 $patientId = isset($_GET['patient']) ? (int) $_GET['patient'] : 0;
 $database = new Database();
 $db = $database->connect();
@@ -125,9 +133,22 @@ foreach ($borclar as $borc) {
 
 // Taksitleri getir
 $stmt = $db->prepare("
-    SELECT t.*
+    SELECT t.*, 
+           t.ODENEN_TUTAR,
+           GROUP_CONCAT(
+               CONCAT(
+                   DATE_FORMAT(o.ODEME_TARIHI, '%d.%m.%Y'), 
+                   ' - ',
+                   o.TUTAR,
+                   'TL (',
+                   o.ODEME_TURU,
+                   ')'
+               ) SEPARATOR '<br>'
+           ) as ODEME_GECMISI
     FROM taksitler t
+    LEFT JOIN odemeler o ON o.TAKSIT_ID = t.ID
     WHERE t.BORC_ID = :borc_id
+    GROUP BY t.ID
     ORDER BY t.TAKSIT_NO ASC
 ");
 
@@ -222,83 +243,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['taksit_id']) && isset
         // Taksiti güncelle
         $stmt = $db->prepare("
             UPDATE taksitler 
-            SET DURUM = CASE WHEN :odeme_tutari >= TUTAR THEN 'odendi' ELSE DURUM END,
-                ODENEN_TUTAR = ODENEN_TUTAR + :odeme_tutari
+            SET ODENEN_TUTAR = TUTAR,
+                DURUM = 'odendi'
             WHERE ID = :taksit_id
         ");
         
         $stmt->execute([
+            ':taksit_id' => $taksitId
+        ]);
+
+        // Ödeme kaydını oluştur
+        $stmt = $db->prepare("
+            INSERT INTO odemeler (
+                TAKSIT_ID, 
+                TUTAR, 
+                ODEME_TURU, 
+                ODEME_TARIHI, 
+                ACIKLAMA
+            ) VALUES (
+                :taksit_id,
+                :tutar,
+                :odeme_turu,
+                NOW(),
+                :aciklama
+            )
+        ");
+        
+        $stmt->execute([
             ':taksit_id' => $taksitId,
-            ':odeme_tutari' => $odemeTutari
+            ':tutar' => $_POST['tutar'],
+            ':odeme_turu' => $_POST['odeme_turu'],
+            ':aciklama' => $_POST['aciklama'] ?? null
         ]);
 
         // Borç tablosunu güncelle
         $stmt = $db->prepare("
             UPDATE hasta_borc 
-            SET KALAN_BORC = KALAN_BORC - :odeme_tutari
-            WHERE ID = :borc_id
+            SET KALAN_BORC = KALAN_BORC - (
+                SELECT TUTAR FROM taksitler WHERE ID = :taksit_id
+            ),
+            AKTIF = CASE 
+                WHEN NOT EXISTS(
+                    SELECT 1 FROM taksitler 
+                    WHERE BORC_ID = hasta_borc.ID 
+                    AND DURUM != 'odendi'
+                ) THEN 0 
+                ELSE AKTIF 
+            END
+            WHERE ID = (SELECT BORC_ID FROM taksitler WHERE ID = :taksit_id)
         ");
         
-        $stmt->execute([
-            ':borc_id' => $taksit['BORC_ID'],
-            ':odeme_tutari' => $odemeTutari
-        ]);
-        
-        // Tüm taksitlerin ödenip ödenmediğini kontrol et
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as odenmemis_taksit
-            FROM taksitler 
-            WHERE BORC_ID = :borc_id 
-            AND ODENEN_TUTAR < TUTAR
-        ");
-        
-        $stmt->execute([':borc_id' => $taksit['BORC_ID']]);
-        $odenmemisTaksit = $stmt->fetch(PDO::FETCH_ASSOC)['odenmemis_taksit'];
-        
-        // Tüm taksitler ödendiyse planı pasife çek
-        if ($odenmemisTaksit == 0) {
-            $stmt = $db->prepare("
-                UPDATE hasta_borc 
-                SET AKTIF = 0 
-                WHERE ID = :borc_id
-            ");
-            
-            $stmt->execute([':borc_id' => $taksit['BORC_ID']]);
-        }
-
-        // Kalan taksitlerin tutarlarını güncelle
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as kalan_taksit_sayisi
-            FROM taksitler 
-            WHERE BORC_ID = :borc_id 
-            AND DURUM = 'bekliyor'
-            AND ID != :taksit_id
-        ");
-        $stmt->execute([
-            ':borc_id' => $taksit['BORC_ID'],
-            ':taksit_id' => $taksitId
-        ]);
-        $kalanTaksitSayisi = $stmt->fetch(PDO::FETCH_ASSOC)['kalan_taksit_sayisi'];
-        
-        if ($kalanTaksitSayisi > 0) {
-            $yeniKalanBorc = $taksit['KALAN_BORC'] - $odemeTutari;
-            $yeniTaksitTutari = $yeniKalanBorc / $kalanTaksitSayisi;
-            
-            // Kalan taksitlerin tutarlarını güncelle
-            $stmt = $db->prepare("
-                UPDATE taksitler 
-                SET TUTAR = :yeni_tutar
-                WHERE BORC_ID = :borc_id 
-                AND DURUM = 'bekliyor'
-                AND ID != :taksit_id
-            ");
-            
-            $stmt->execute([
-                ':yeni_tutar' => $yeniTaksitTutari,
-                ':borc_id' => $taksit['BORC_ID'],
-                ':taksit_id' => $taksitId
-            ]);
-        }
+        $stmt->execute([':taksit_id' => $taksitId]);
 
         // Cari hareket kaydı oluştur
         $stmt = $db->prepare("
@@ -542,7 +537,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_plan'])) {
                                                 <td><?php echo date('d.m.Y', strtotime($taksit['VADE_TARIHI'])); ?></td>
                                                 <td>
                                                     <?php echo number_format($taksit['TUTAR'], 2, ',', '.'); ?> ₺
-                                                    <?php if ($taksit['ODENEN_TUTAR'] > 0 && $taksit['ODENEN_TUTAR'] < $taksit['TUTAR']): ?>
+                                                    <?php if ($taksit['ODENEN_TUTAR'] > 0): ?>
                                                         <br>
                                                         <small class="text-success">
                                                             (<?php echo number_format($taksit['ODENEN_TUTAR'], 2, ',', '.'); ?> ₺ ödendi)
@@ -551,7 +546,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_plan'])) {
                                                 </td>
                                                 <td>
                                                     <span
-                                                        class="badge bg-<?php echo getTaksitStatusColor($taksit['DURUM']); ?>">
+                                                        class="badge bg-<?php 
+                                                            echo ($taksit['ODENEN_TUTAR'] >= $taksit['TUTAR']) ? 'success' : 
+                                                                ($taksit['ODENEN_TUTAR'] > 0 ? 'warning' : 
+                                                                getTaksitStatusColor($taksit['DURUM'])); 
+                                                        ?>">
                                                         <?php 
                                                         if ($taksit['ODENEN_TUTAR'] >= $taksit['TUTAR']) {
                                                             echo "Ödendi";
@@ -564,7 +563,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_plan'])) {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <?php if ($taksit['ODENEN_TUTAR'] < $taksit['TUTAR'] && $taksit['DURUM'] != 'odendi'): ?>
+                                                    <?php if ($taksit['DURUM'] != 'odendi'): ?>
                                                         <button type="button" class="btn btn-sm btn-success"
                                                             onclick="showTransactionModal('gelir', <?php echo $taksit['ID']; ?>, <?php echo $taksit['TUTAR']; ?>)">
                                                             <i class="fas fa-money-bill-wave"></i> Öde
@@ -644,42 +643,48 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_plan'])) {
         </div>
     </div>
 
-    <!-- İşlem Ekleme Modal -->
+    <!-- Ödeme Modal -->
     <div class="modal fade" id="transactionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="transactionModalTitle">Yeni İşlem</h5>
+                    <h5 class="modal-title" id="transactionModalTitle">Ödeme Al</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST">
+                <form method="POST" class="needs-validation" novalidate>
                     <div class="modal-body">
-                        <input type="hidden" name="tur" id="islemTuru">
+                        <input type="hidden" name="islem_turu" id="islemTuru" value="gelir">
                         <input type="hidden" name="taksit_id" id="taksitId">
-                        <input type="hidden" name="kalan_borc" id="kalanBorc">
                         
                         <div class="mb-3">
                             <label class="form-label">Tutar</label>
                             <div class="input-group">
-                                <input type="number" class="form-control" name="tutar" id="tutarInput" 
-                                    step="0.01" min="0" required onchange="validateTotalPayment(this)">
                                 <span class="input-group-text">₺</span>
+                                <input type="number" class="form-control" name="tutar" id="tutarInput"
+                                    step="0.01" required readonly>
                             </div>
-                            <small class="form-text text-muted">Kalan toplam borç: <span id="kalanBorcText"></span> ₺</small>
                         </div>
                         
                         <div class="mb-3">
                             <label class="form-label">Ödeme Türü</label>
                             <select class="form-select" name="odeme_turu" required>
+                                <option value="">Seçiniz...</option>
                                 <option value="nakit">Nakit</option>
-                                <option value="kredi_karti">Kredi Kartı</option>
+                                <option value="kart">Kart</option>
                                 <option value="havale">Havale/EFT</option>
                             </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" name="aciklama" rows="2"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                        <button type="submit" class="btn btn-success" id="submitBtn">Kaydet</button>
+                        <button type="submit" class="btn btn-success" id="submitBtn">
+                            <i class="fas fa-check me-1"></i>Onayla
+                        </button>
                     </div>
                 </form>
             </div>
@@ -908,22 +913,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_plan'])) {
             // Taksit ödemesi için
             if (taksitId && tutar) {
                 document.getElementById('taksitId').value = taksitId;
-                document.getElementById('tutarInput').value = '';
-                document.getElementById('kalanBorc').value = <?php echo $aktif_borc['KALAN_BORC'] ?? 0; ?>;
-                document.getElementById('kalanBorcText').textContent = <?php echo $aktif_borc['KALAN_BORC'] ?? 0; ?>;
+                document.getElementById('tutarInput').value = tutar;
             }
             
             new bootstrap.Modal(document.getElementById('transactionModal')).show();
-        }
-
-        function validateTotalPayment(input) {
-            const kalanBorc = parseFloat(document.getElementById('kalanBorc').value);
-            const girilenTutar = parseFloat(input.value);
-            
-            if (girilenTutar > kalanBorc) {
-                alert('Girilen tutar, kalan toplam borçtan büyük olamaz!');
-                input.value = kalanBorc;
-            }
         }
     </script>
 </body>

@@ -3,29 +3,34 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
-// Sadece admin yetkisi kontrolü
-if (!isAdmin()) {
-    header('Location: settings.php');
-    exit;
-}
+// Kullanıcı listesi erişim kontrolü
+checkPagePermission('kullanicilar_erisim');
+
+// Butonlar için yetki kontrolleri
+$canAddUser = hasPermission('kullanici_ekle');
+$canEditUser = hasPermission('kullanici_duzenle');
+$canDeleteUser = hasPermission('kullanici_sil');
 
 $database = new Database();
 $db = $database->connect();
 
-// Kullanıcıları getir
-$stmt = $db->prepare("
-    SELECT k.*, r.ROL_ADI 
+// Kullanıcıları getir - SQL sorgusunu güncelle
+$stmt = $db->query("
+    SELECT k.*, r.ROL_ADI,
+           k.EMAIL as KULLANICI_ADI
     FROM kullanicilar k 
-    JOIN roller r ON k.ROL_ID = r.ID 
-    ORDER BY k.AD_SOYAD
+    LEFT JOIN roller r ON k.ROL_ID = r.ID 
+    ORDER BY k.AD_SOYAD ASC
 ");
-$stmt->execute();
-$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$kullanicilar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Rolleri getir
+$stmt = $db->query("SELECT * FROM roller ORDER BY ROL_ADI ASC");
+$roller = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,360 +38,139 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-
-        .content-area {
-            padding-top: 30px !important;
-        }
-
-        .page-header {
-            background: #fff;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .page-title {
-            font-size: 1rem;
-            color: #212529;
-            font-weight: 600;
-        }
-
-        .btn-success {
-            padding: 10px 20px;
-            font-size: 1rem;
-        }
-
-        .btn-outline-secondary {
-            border: none;
-            background: #f1f3f5;
-            color: #495057;
-        }
-
-        .btn-outline-secondary:hover {
-            background: #e9ecef;
-            border: none;
-            color: #212529;
-        }
-
-        .btn-sm {
-            padding: 8px 12px;
-            font-size: 0.9rem;
-        }
-
-        .user-card {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-
-        .user-table {
-            margin: 0;
-        }
-
-        .user-table th {
-            background: #f8f9fa;
-            font-weight: 500;
-            color: #495057;
-            padding: 15px;
-            border-color: #e9ecef;
-        }
-
-        .user-table td {
-            padding: 15px;
-            vertical-align: middle;
-            border-color: #e9ecef;
-        }
-
-        .user-table tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        .user-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .user-name {
-            font-weight: 500;
-            color: #212529;
-            font-size: 1.1rem;
-        }
-
-        .user-email {
-            color: #6c757d;
-            font-size: 0.95rem;
-        }
-
-        .user-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .user-actions .btn {
-            padding: 8px;
-            border-radius: 6px;
-        }
-
-        .badge {
-            padding: 6px 12px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        @media (max-width: 767px) {
-            .content-area {
-                padding: 20px 15px 80px 15px !important;
-            }
-
-            .page-header {
-                padding: 15px;
-                margin-bottom: 15px;
-                display: flex;
-                align-items: center;
-                gap: 15px;
-            }
-
-            .page-title {
-                font-size: 1.2rem;
-                margin: 0;
-            }
-
-            .btn-success {
-                padding: 12px 24px;
-                font-size: 1.1rem;
-                height: 45px;
-                width: 45px;
-                padding: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .user-list {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                padding: 5px;
-            }
-
-            .user-item {
-                background: white;
-                border-radius: 10px;
-                padding: 20px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                border: 1px solid rgba(0, 0, 0, 0.05);
-            }
-
-            .user-item-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 15px;
-            }
-
-            .user-item-info {
-                margin-bottom: 15px;
-                font-size: 1rem;
-            }
-
-            .user-item-actions {
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-            }
-
-            .user-item-actions .btn {
-                font-size: 1.1rem;
-                width: 45px;
-                height: 45px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border: none;
-            }
-
-            .btn-primary {
-                background: #e3f2fd;
-                color: #0d6efd;
-            }
-
-            .btn-danger {
-                background: #fee2e2;
-                color: #dc3545;
-            }
-
-            .btn-sm {
-                padding: 0;
-            }
-
-            .user-name {
-                font-size: 1.2rem;
-                margin-bottom: 4px;
-            }
-
-            .user-email {
-                font-size: 1rem;
-            }
-
-            .badge {
-                padding: 8px 14px;
-                font-size: 1rem;
-            }
-
-            .table-responsive {
-                display: none;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .user-list {
-                display: none;
-            }
-        }
-    </style>
 </head>
-
 <body>
     <?php include 'includes/header.php'; ?>
 
-    <div class="container content-area">
-        <div class="page-header d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <a href="settings.php" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="page-title mb-0">Kullanıcı Yönetimi</h1>
-            </div>
-            <a href="add_user.php" class="btn btn-success">
-                <i class="fas fa-user-plus "></i>
-            </a>
-        </div>
+    <div class="container py-4">
+        <div class="row">
+            <div class="col-12">
+                <!-- Geri Butonu -->
+                <div class="mb-3">
+                    <a href="index.php" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Geri
+                    </a>
+                </div>
 
-        <!-- Mobil Görünüm -->
-        <div class="user-list">
-            <?php foreach ($users as $user): ?>
-                <div class="user-item">
-                    <div class="user-item-header">
-                        <div class="user-info">
-                            <span class="user-name"><?php echo htmlspecialchars($user['AD_SOYAD']); ?></span>
-                            <span class="user-email"><?php echo htmlspecialchars($user['EMAIL']); ?></span>
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Kullanıcı Listesi</h5>
+                        <?php if ($canAddUser): ?>
+                            <button type="button" class="btn btn-success" onclick="showAddUserModal()">
+                                <i class="fas fa-plus me-2"></i>Yeni Kullanıcı
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Ad Soyad</th>
+                                        <th>E-posta</th>
+                                        <th>Rol</th>
+                                        <th>Durum</th>
+                                        <th style="width: 150px;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($kullanicilar as $kullanici): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($kullanici['AD_SOYAD']); ?></td>
+                                            <td><?php echo htmlspecialchars($kullanici['EMAIL']); ?></td>
+                                            <td><?php echo htmlspecialchars($kullanici['ROL_ADI']); ?></td>
+                                            <td>
+                                                <span class="badge bg-<?php echo $kullanici['DURUM'] == 'aktif' ? 'success' : 'danger'; ?>">
+                                                    <?php echo ucfirst($kullanici['DURUM']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <?php if ($canEditUser): ?>
+                                                        <button type="button" class="btn btn-primary btn-sm" 
+                                                                onclick="editUser(<?php echo $kullanici['ID']; ?>)">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if ($canDeleteUser): ?>
+                                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                                onclick="deleteUser(<?php echo $kullanici['ID']; ?>)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                        <span class="badge bg-<?php echo $user['DURUM'] == 'aktif' ? 'success' : 'danger'; ?>">
-                            <?php echo ucfirst($user['DURUM']); ?>
-                        </span>
-                    </div>
-                    <div class="user-item-info">
-                        <small class="text-muted">Rol: <?php echo htmlspecialchars($user['ROL_ADI']); ?></small>
-                    </div>
-                    <div class="user-item-actions">
-                        <a href="edit_user.php?id=<?php echo $user['ID']; ?>" class="btn btn-sm btn-primary">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <button class="btn btn-sm btn-danger" onclick="deleteUser(<?php echo $user['ID']; ?>)">
-                            <i class="fas fa-trash"></i>
-                        </button>
                     </div>
                 </div>
-            <?php endforeach; ?>
+            </div>
         </div>
+    </div>
 
-        <!-- Masaüstü Görünüm -->
-        <div class="user-card">
-            <div class="table-responsive">
-                <table class="table table-hover user-table">
-                    <thead>
-                        <tr>
-                            <th>Ad Soyad</th>
-                            <th>Email</th>
-                            <th>Rol</th>
-                            <th>Durum</th>
-                            <th style="width: 120px;">İşlemler</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($users as $user): ?>
-                            <tr>
-                                <td data-label="Ad Soyad">
-                                    <div class="user-info">
-                                        <span class="user-name"><?php echo htmlspecialchars($user['AD_SOYAD']); ?></span>
-                                        <span
-                                            class="user-email d-md-none"><?php echo htmlspecialchars($user['EMAIL']); ?></span>
-                                    </div>
-                                </td>
-                                <td data-label="Email" class="d-none d-md-table-cell">
-                                    <?php echo htmlspecialchars($user['EMAIL']); ?>
-                                </td>
-                                <td data-label="Rol"><?php echo htmlspecialchars($user['ROL_ADI']); ?></td>
-                                <td data-label="Durum">
-                                    <span class="badge bg-<?php echo $user['DURUM'] == 'aktif' ? 'success' : 'danger'; ?>">
-                                        <?php echo ucfirst($user['DURUM']); ?>
-                                    </span>
-                                </td>
-                                <td data-label="İşlemler">
-                                    <div class="user-actions">
-                                        <a href="edit_user.php?id=<?php echo $user['ID']; ?>"
-                                            class="btn btn-sm btn-primary">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button class="btn btn-sm btn-danger"
-                                            onclick="deleteUser(<?php echo $user['ID']; ?>)">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <!-- Kullanıcı Ekleme Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Kullanıcı Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="addUserForm" method="POST" action="add_user.php">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Ad Soyad</label>
+                            <input type="text" class="form-control" name="ad_soyad" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">E-posta</label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Şifre</label>
+                            <input type="password" class="form-control" name="sifre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rol</label>
+                            <select class="form-select" name="rol_id" required>
+                                <?php foreach ($roller as $rol): ?>
+                                    <option value="<?php echo $rol['ID']; ?>">
+                                        <?php echo htmlspecialchars($rol['ROL_ADI']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-success">Kaydet</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     <?php include 'includes/nav.php'; ?>
 
-    <!-- Silme Onay Modalı -->
-    <div class="modal fade" id="deleteUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Kullanıcı Sil</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Bu kullanıcıyı silmek istediğinizden emin misiniz?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-danger" id="confirmDelete">Sil</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let userIdToDelete = null;
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-
-        function deleteUser(id) {
-            userIdToDelete = id;
-            deleteModal.show();
+        function showAddUserModal() {
+            new bootstrap.Modal(document.getElementById('addUserModal')).show();
         }
 
-        document.getElementById('confirmDelete').addEventListener('click', function () {
-            if (userIdToDelete) {
-                window.location.href = 'delete_user.php?id=' + userIdToDelete;
+        function editUser(id) {
+            window.location.href = 'edit_user.php?id=' + id;
+        }
+
+        function deleteUser(id) {
+            if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
+                window.location.href = 'delete_user.php?id=' + id;
             }
-        });
+        }
     </script>
 </body>
-
 </html>

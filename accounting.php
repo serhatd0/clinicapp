@@ -3,6 +3,14 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Muhasebe erişim kontrolü
+checkPagePermission('cari_erisim');
+
+// Butonlar için yetki kontrolleri
+$canAddTransaction = hasPermission('cari_ekle');
+$canEditTransaction = hasPermission('cari_duzenle');
+$canDeleteTransaction = hasPermission('cari_sil');
+
 $database = new Database();
 $db = $database->connect();
 
@@ -371,10 +379,20 @@ $aylik_trend = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                     <td><?php echo htmlspecialchars($hareket['KASIYER_ADI']); ?></td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                            onclick="deleteTransaction(<?php echo $hareket['ID']; ?>)">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <div class="btn-group">
+                                            <?php if ($canEditTransaction): ?>
+                                                <button type="button" class="btn btn-primary btn-sm" onclick="editTransaction(<?php echo $hareket['ID']; ?>)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            
+                                            <?php if ($canDeleteTransaction): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="deleteTransaction(<?php echo $hareket['ID']; ?>)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

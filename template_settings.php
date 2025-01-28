@@ -3,6 +3,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Randevu şablonları erişim kontrolü
+checkPagePermission('randevu_sablon_erisim');
+
 // Sadece yetkili kullanıcılar erişebilir
 if (!($_SESSION['rol_id'] == 1 || $_SESSION['rol_id'] == 3)) {
     header('Location: settings.php');

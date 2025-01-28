@@ -227,6 +227,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <div class="form-section">
                             <h3 class="form-section-title">Diğer Bilgiler</h3>
 
+                           
+
                             <div class="mb-3">
                                 <label for="reference" class="form-label">Referans</label>
                                 <select class="form-select" id="reference" name="reference">
@@ -242,6 +244,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <label for="emptyField" class="form-label">Ek Bilgi</label>
                                 <textarea class="form-control" id="emptyField" name="emptyField"
                                     rows="3"><?php echo htmlspecialchars($patient['ACIKLAMA']); ?></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="registerDate" class="form-label">Kayıt Tarihi</label>
+                                <input type="datetime-local" 
+                                       class="form-control" 
+                                       id="registerDate" 
+                                       name="registerDate" 
+                                       value="<?php echo date('Y-m-d\TH:i', strtotime($patient['CREATED_AT'])); ?>">
                             </div>
                         </div>
 

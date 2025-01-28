@@ -3,6 +3,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Kullanıcı ekleme yetkisi kontrolü
+checkPagePermission('kullanici_ekle');
+
 // Sadece admin yetkisi olanlar kullanıcı ekleyebilir
 if (!isAdmin()) {
     header('Location: index.php');

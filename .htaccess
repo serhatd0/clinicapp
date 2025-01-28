@@ -1,0 +1,11 @@
+Options -Indexes
+RewriteEngine On
+
+php_value display_errors 1
+php_value error_reporting E_ALL
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule> 

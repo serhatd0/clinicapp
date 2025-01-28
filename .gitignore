@@ -41,6 +41,9 @@ debug.log
 *.swo
 *~
 
+# Database
+database.sql
+
 # Derleme çıktıları
 /build/
 /dist/

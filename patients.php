@@ -3,6 +3,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Hasta listesi erişim kontrolü
+checkPagePermission('hasta_listesi_erisim');
+
 $database = new Database();
 $db = $database->connect();
 

@@ -3,6 +3,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Anasayfa erişim kontrolü
+checkPagePermission('anasayfa_erisim');
+
 $database = new Database();
 $db = $database->connect();
 
@@ -33,24 +36,31 @@ while ($currentDay <= $endDate) {
 // Seçili güne ait randevuları getir
 $appointments = getAppointmentsByDate($db, $selectedDate);
 
-// Son ödemeleri getir
+// Bugünkü ödemeleri getir
 $stmt = $db->prepare("
-    SELECT o.*, t.TAKSIT_NO, hb.PLAN_ADI, h.AD_SOYAD,
-           DATE_FORMAT(o.ODEME_TARIHI, '%d.%m.%Y') as ODEME_TARIHI_FORMAT
+    SELECT 
+        h.AD_SOYAD,
+        o.TUTAR,
+        o.ODEME_TURU,
+        DATE_FORMAT(o.ODEME_TARIHI, '%H:%i') as ODEME_SAATI,
+        hb.PLAN_ADI,
+        t.TAKSIT_NO,
+        o.ACIKLAMA
     FROM odemeler o
     JOIN taksitler t ON t.ID = o.TAKSIT_ID
     JOIN hasta_borc hb ON hb.ID = t.BORC_ID
     JOIN hastalar h ON h.ID = hb.HASTA_ID
+    WHERE DATE(o.ODEME_TARIHI) = CURDATE()
     ORDER BY o.ODEME_TARIHI DESC
-    LIMIT 10
 ");
 $stmt->execute();
-$sonOdemeler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$bugunOdemeler = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Bugünkü ödemelerin toplamı
+// Bugünkü toplam ödeme ve işlem sayısı
 $stmt = $db->prepare("
-    SELECT COALESCE(SUM(o.TUTAR), 0) as BUGUN_TOPLAM,
-           COUNT(*) as BUGUN_ISLEM
+    SELECT 
+        COALESCE(SUM(o.TUTAR), 0) as BUGUN_TOPLAM,
+        COUNT(DISTINCT o.ID) as BUGUN_ISLEM
     FROM odemeler o
     WHERE DATE(o.ODEME_TARIHI) = CURDATE()
 ");
@@ -59,14 +69,44 @@ $bugunOzet = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Vadesi geçmiş ödemeler
 $stmt = $db->prepare("
-    SELECT COUNT(*) as GECIKEN_TAKSIT,
-           COALESCE(SUM(t.TUTAR), 0) as GECIKEN_TUTAR
+    SELECT 
+        COUNT(*) as GECIKEN_TAKSIT_SAYISI,
+        COALESCE(SUM(t.TUTAR), 0) as GECIKEN_TOPLAM
     FROM taksitler t
+    JOIN hasta_borc hb ON hb.ID = t.BORC_ID
     WHERE t.DURUM != 'odendi'
     AND t.VADE_TARIHI < CURDATE()
 ");
 $stmt->execute();
 $gecikmeOzet = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Bekleyen ödemeleri getir
+$stmt = $db->prepare("
+    SELECT 
+        t.ID as TAKSIT_ID,
+        h.AD_SOYAD,
+        hb.PLAN_ADI,
+        hb.HASTA_ID,
+        t.TAKSIT_NO,
+        t.TUTAR,
+        t.VADE_TARIHI,
+        CASE 
+            WHEN t.VADE_TARIHI < CURDATE() THEN 'gecikti'
+            WHEN t.VADE_TARIHI = CURDATE() THEN 'bugun'
+            ELSE 'normal'
+        END as DURUM
+    FROM taksitler t
+    JOIN hasta_borc hb ON hb.ID = t.BORC_ID
+    JOIN hastalar h ON h.ID = hb.HASTA_ID
+    WHERE t.DURUM != 'odendi'
+    AND (
+        DATE(t.VADE_TARIHI) <= CURDATE()
+        OR DATE(t.VADE_TARIHI) = CURDATE()
+    )
+    ORDER BY t.VADE_TARIHI ASC
+");
+$stmt->execute();
+$bekleyenOdemeler = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -516,11 +556,11 @@ $gecikmeOzet = $stmt->fetch(PDO::FETCH_ASSOC);
                                 <h6 class="card-title mb-0">Bugünkü Ödemeler</h6>
                             </div>
                             <h3 class="text-success mb-1">
-                                <?php echo number_format($bugunOzet['BUGUN_TOPLAM'], 2, ',', '.'); ?> ₺
+                                <?php echo number_format($bugunOzet['BUGUN_TOPLAM'] ?? 0, 2, ',', '.'); ?> ₺
                             </h3>
                             <small class="text-muted">
                                 <i class="fas fa-exchange-alt me-1"></i>
-                                <?php echo $bugunOzet['BUGUN_ISLEM']; ?> işlem
+                                <?php echo $bugunOzet['BUGUN_ISLEM'] ?? 0; ?> işlem
                             </small>
                         </div>
                     </div>
@@ -535,11 +575,11 @@ $gecikmeOzet = $stmt->fetch(PDO::FETCH_ASSOC);
                                 <h6 class="card-title mb-0">Vadesi Geçen</h6>
                             </div>
                             <h3 class="text-danger mb-1">
-                                <?php echo number_format($gecikmeOzet['GECIKEN_TUTAR'], 2, ',', '.'); ?> ₺
+                                <?php echo number_format($gecikmeOzet['GECIKEN_TOPLAM'], 2, ',', '.'); ?> ₺
                             </h3>
                             <small class="text-muted">
                                 <i class="fas fa-clock me-1"></i>
-                                <?php echo $gecikmeOzet['GECIKEN_TAKSIT']; ?> taksit
+                                <?php echo $gecikmeOzet['GECIKEN_TAKSIT_SAYISI']; ?> taksit
                             </small>
                         </div>
                     </div>
@@ -568,6 +608,69 @@ $gecikmeOzet = $stmt->fetch(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
+            <!-- Bekleyen Ödemeler -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div
+                    class="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-center py-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                        <h5 class="mb-0">Bekleyen Ödemeler</h5>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr class="bg-light">
+                                    <th>Vade Tarihi</th>
+                                    <th>Hasta</th>
+                                    <th>Plan</th>
+                                    <th>Taksit</th>
+                                    <th>Tutar</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($bekleyenOdemeler)): ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Bekleyen ödeme bulunmuyor
+                                        </td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($bekleyenOdemeler as $odeme): ?>
+                                        <tr
+                                            class="<?php echo $odeme['DURUM'] == 'gecikti' ? 'table-danger' : ($odeme['DURUM'] == 'bugun' ? 'table-warning' : ''); ?>">
+                                            <td>
+                                                <?php echo date('d.m.Y', strtotime($odeme['VADE_TARIHI'])); ?>
+                                                <?php if ($odeme['DURUM'] == 'gecikti'): ?>
+                                                    <span class="badge bg-danger">Gecikmiş</span>
+                                                <?php elseif ($odeme['DURUM'] == 'bugun'): ?>
+                                                    <span class="badge bg-warning">Bugün</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($odeme['AD_SOYAD']); ?></td>
+                                            <td><?php echo htmlspecialchars($odeme['PLAN_ADI']); ?></td>
+                                            <td><?php echo $odeme['TAKSIT_NO']; ?>. Taksit</td>
+                                            <td class="fw-bold">
+                                                <?php echo number_format($odeme['TUTAR'], 2, ',', '.'); ?> ₺
+                                            </td>
+                                            <td>
+                                                <a href="payment.php?patient=<?php echo $odeme['HASTA_ID']; ?>"
+                                                    class="btn btn-sm btn-success">
+                                                    <i class="fas fa-money-bill-wave me-1"></i>Öde
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Son Ödemeler -->
             <div class="card border-0 shadow-sm">
                 <div
@@ -586,31 +689,36 @@ $gecikmeOzet = $stmt->fetch(PDO::FETCH_ASSOC);
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr class="bg-light">
-                                    <th>Tarih</th>
+                                    <th>Saat</th>
                                     <th>Hasta</th>
                                     <th>Plan</th>
                                     <th>Taksit</th>
                                     <th>Tutar</th>
-                                    <th>Ödeme Türü</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($sonOdemeler as $odeme): ?>
-                                    <tr class="align-middle">
-                                        <td><?php echo $odeme['ODEME_TARIHI_FORMAT']; ?></td>
-                                        <td><?php echo htmlspecialchars($odeme['AD_SOYAD']); ?></td>
-                                        <td><?php echo htmlspecialchars($odeme['PLAN_ADI']); ?></td>
-                                        <td><?php echo $odeme['TAKSIT_NO']; ?>. Taksit</td>
-                                        <td class="fw-bold text-success">
-                                            <?php echo number_format($odeme['TUTAR'], 2, ',', '.'); ?> ₺
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-<?php echo getOdemeTuruColor($odeme['ODEME_TURU']); ?>">
-                                                <?php echo getOdemeTuruText($odeme['ODEME_TURU']); ?>
-                                            </span>
+                                <?php if (empty($bugunOdemeler)): ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Bugün henüz ödeme yapılmadı
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
+                                <?php else: ?>
+                                    <?php foreach ($bugunOdemeler as $odeme): ?>
+                                        <tr>
+                                            <td><?php echo $odeme['ODEME_SAATI']; ?></td>
+                                            <td><?php echo htmlspecialchars($odeme['AD_SOYAD']); ?></td>
+                                            <td><?php echo htmlspecialchars($odeme['PLAN_ADI']); ?></td>
+                                            <td><?php echo $odeme['TAKSIT_NO']; ?>. Taksit
+                                                <small class="text-muted">(<?php echo ucfirst($odeme['ODEME_TURU']); ?>)</small>
+                                            </td>
+                                            <td class="fw-bold text-success">
+                                                <?php echo number_format($odeme['TUTAR'], 2, ',', '.'); ?> ₺
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>

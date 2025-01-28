@@ -3,6 +3,9 @@ require_once 'includes/db.php';
 require_once 'includes/functions.php';
 require_once 'includes/auth.php';
 
+// Ayarlar erişim kontrolü
+checkPagePermission('ayarlar_erisim');
+
 $database = new Database();
 $db = $database->connect();
 
@@ -170,20 +173,32 @@ if (isAdmin()) {
             <div class="col-md-12 col-lg-12 mx-auto">
                 <div class="card settings-menu">
                     <div class="list-group list-group-flush">
-                        <?php if ($_SESSION['rol_id'] == 1 || $_SESSION['rol_id'] == 3): ?>
+                        <?php if (hasPermission('roller_erisim')): ?>
+                            <a href="roles.php" class="list-group-item list-group-item-action">
+                                <i class="fas fa-user-tag me-2"></i>Rol Yönetimi
+                            </a>
+                        <?php endif; ?>
+                        
+                        <?php if (hasPermission('kullanicilar_erisim')): ?>
                             <a href="users.php" class="list-group-item list-group-item-action">
                                 <i class="fas fa-users me-2"></i>Kullanıcı Yönetimi
                             </a>
+                        <?php endif; ?>
+                        
+                        <?php if (hasPermission('ayarlar_erisim')): ?>
                             <a href="template_settings.php" class="list-group-item list-group-item-action">
                                 <i class="fas fa-calendar-alt me-2"></i>Randevu Şablonları
                             </a>
                         <?php endif; ?>
+                        
                         <a href="profile.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-user-circle me-2"></i>Profil Ayarları
                         </a>
+                        
                         <a href="change_password.php" class="list-group-item list-group-item-action">
                             <i class="fas fa-key me-2"></i>Şifre Değiştir
                         </a>
+                        
                         <a href="logout.php" class="list-group-item list-group-item-action text-danger">
                             <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
                         </a>

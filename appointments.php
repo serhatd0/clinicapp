@@ -1,6 +1,15 @@
 <?php
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
+require_once 'includes/auth.php';
+
+// Randevu listesi erişim kontrolü
+checkPagePermission('randevu_listesi_erisim');
+
+// Butonlar için yetki kontrolleri
+$canAddAppointment = hasPermission('randevu_ekle');
+$canEditAppointment = hasPermission('randevu_duzenle');
+$canDeleteAppointment = hasPermission('randevu_sil');
 
 $database = new Database();
 $db = $database->connect();
