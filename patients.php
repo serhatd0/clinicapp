@@ -9,18 +9,34 @@ checkPagePermission('hasta_listesi_erisim');
 $database = new Database();
 $db = $database->connect();
 
-// Arama ve sıralama parametreleri
-$search = isset($_GET['search']) ? $_GET['search'] : '';
-$sort = isset($_GET['sort']) ? $_GET['sort'] : 'desc'; // Varsayılan olarak en yeni kayıtlar
+// Sayfalandırma parametreleri
+$limit = 20; // Her seferde yüklenecek hasta sayısı
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
 
-// SQL sorgusunu güncelle
+// Arama ve sıralama parametreleri
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'desc';
+
+// SQL sorgusunu oluştur
 $sql = "SELECT *, DATE_FORMAT(CREATED_AT, '%d.%m.%Y %H:%i') as KAYIT_TARIHI 
-        FROM hastalar 
-        WHERE (AD_SOYAD LIKE :search OR KIMLIK_NO LIKE :search) 
-        ORDER BY CREATED_AT " . ($sort == 'asc' ? 'ASC' : 'DESC');
+        FROM hastalar";
+
+if (!empty($search)) {
+    $sql .= " WHERE (AD_SOYAD LIKE :search OR KIMLIK_NO LIKE :search)";
+}
+
+$sql .= " ORDER BY CREATED_AT " . ($sort == 'asc' ? 'ASC' : 'DESC');
+$sql .= " LIMIT :limit OFFSET :offset";
 
 $stmt = $db->prepare($sql);
-$stmt->execute([':search' => "%$search%"]);
+if (!empty($search)) {
+    $stmt->bindValue(':search', "%$search%", PDO::PARAM_STR);
+}
+$stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
+
 $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -180,7 +196,7 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </a>
         </div>
 
-        <div class="patient-list">
+        <div class="patient-list" id="patientList">
             <?php foreach ($patients as $patient): ?>
                 <div class="patient-item">
                     <div class="patient-main" onclick="toggleActions(this)">
@@ -221,55 +237,107 @@ $patients = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             <?php endforeach; ?>
         </div>
+
         <a href="new-patient.php" class="new-appointment-btn">
             <i class="fas fa-plus" style="margin: 0;"></i>
         </a>
     </div>
 
-    <!-- Quick Actions -->
-
-
-
-
     <?php include 'includes/nav.php'; ?>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- JavaScript -->
     <script>
-        // Arama fonksiyonu
         let searchTimer;
         const searchInput = document.querySelector('.search-input');
         const patientList = document.querySelector('.patient-list');
+        let page = 1;
+        let loading = false;
+        let hasMore = true; // Daha fazla hasta olup olmadığını kontrol etmek için
 
-        searchInput.addEventListener('input', function (e) {
+        // Arama fonksiyonu
+        searchInput.addEventListener('input', function(e) {
             clearTimeout(searchTimer);
-            const searchTerm = e.target.value;
-
-            // 500ms bekle ve sonra aramayı yap
+            const searchTerm = e.target.value.trim();
+            page = 1; // Aramada sayfayı resetle
+            hasMore = true; // Yeni aramada hasMore'u resetle
+            
             searchTimer = setTimeout(() => {
-                fetchPatients(searchTerm);
+                fetchPatients(searchTerm, page, false);
             }, 500);
         });
 
-        function fetchPatients(searchTerm) {
-            fetch(`search_patients.php?search=${encodeURIComponent(searchTerm)}`)
+        // Sonsuz kaydırma
+        window.addEventListener('scroll', function() {
+            if (loading || !hasMore) return;
+
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+                page++;
+                const searchTerm = searchInput.value.trim();
+                fetchPatients(searchTerm, page, true);
+            }
+        });
+
+        function fetchPatients(searchTerm, pageNum, append = false) {
+            loading = true;
+            const sort = new URLSearchParams(window.location.search).get('sort') || 'desc';
+            const url = `search_patients.php?search=${encodeURIComponent(searchTerm)}&page=${pageNum}&sort=${sort}`;
+            
+            fetch(url)
                 .then(response => response.text())
                 .then(html => {
-                    patientList.innerHTML = html;
+                    if (html.trim() === '') {
+                        hasMore = false;
+                        return;
+                    }
+
+                    if (append) {
+                        patientList.insertAdjacentHTML('beforeend', html);
+                    } else {
+                        patientList.innerHTML = html;
+                        hasMore = true; // Yeni arama için reset
+                    }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                })
+                .finally(() => {
+                    loading = false;
+                });
         }
 
+        // Hasta kartı tıklama işlevi
         function toggleActions(element) {
-            // Tüm açık action panellerini kapat
+            const actionsPanel = element.parentElement.querySelector('.patient-actions');
+            
+            // Diğer açık panelleri kapat
             document.querySelectorAll('.patient-actions.show').forEach(panel => {
-                if (panel !== element.parentElement.querySelector('.patient-actions')) {
+                if (panel !== actionsPanel) {
                     panel.classList.remove('show');
                 }
             });
 
-            // Tıklanan hastanın action panelini aç/kapat
-            element.parentElement.querySelector('.patient-actions').classList.toggle('show');
+            actionsPanel.classList.toggle('show');
         }
+
+        // Yükleniyor göstergesi için stil
+        const style = document.createElement('style');
+        style.textContent = `
+            .loading-spinner {
+                text-align: center;
+                padding: 20px;
+                display: none;
+            }
+            .loading-spinner.show {
+                display: block;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Yükleniyor göstergesini ekle
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+        spinner.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div>';
+        patientList.parentNode.insertBefore(spinner, patientList.nextSibling);
     </script>
 </body>
 

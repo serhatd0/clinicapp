@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ) VALUES (
                         :ad_soyad, :kimlik_turu, :kimlik_no, :dogum_tarihi,
                         :cinsiyet, :telefon, :email, :referans,
-                        :aciklama, 1, NOW(), :profil_resmi
+                        :aciklama, 1, :created_at, :profil_resmi
                     )
                 ");
                 
@@ -60,16 +60,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 
                 $stmt->execute([
-                    ':ad_soyad' => $_POST['fullName'],
-                    ':kimlik_turu' => $_POST['idType'],
-                    ':kimlik_no' => $_POST['idNumber'],
-                    ':dogum_tarihi' => $_POST['birthDate'],
-                    ':cinsiyet' => $_POST['gender'],
-                    ':telefon' => $_POST['phone'],
-                    ':email' => $_POST['email'],
+                    ':ad_soyad' => mb_convert_case(trim($_POST['fullName']), MB_CASE_TITLE, "UTF-8"),
+                    ':kimlik_turu' => trim($_POST['idType']),
+                    ':kimlik_no' => trim($_POST['idNumber']),
+                    ':dogum_tarihi' => trim($_POST['birthDate']),
+                    ':cinsiyet' => trim($_POST['gender']),
+                    ':telefon' => trim($_POST['phone']),
+                    ':email' => trim($_POST['email']),
                     ':referans' => $_POST['reference'],
                     ':aciklama' => $_POST['notes'],
-                    ':profil_resmi' => $profilResmi
+                    ':profil_resmi' => $profilResmi,
+                    ':created_at' => !empty($_POST['registerDate']) ? $_POST['registerDate'] : date('Y-m-d H:i:s')
                 ]);
                 
                 // Yeni eklenen hastanın ID'sini al

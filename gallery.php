@@ -294,13 +294,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                                     </a>
                                     <div class="gallery-item-actions">
                                         <div class="btn-group">
-                                            <button class="btn btn-light" onclick="rotateImage(<?php echo $foto['ID']; ?>, 'left')"
-                                                title="Sola Döndür">
-                                                <i class="fas fa-undo"></i>
-                                            </button>
-                                            <button class="btn btn-light" onclick="rotateImage(<?php echo $foto['ID']; ?>, 'right')"
-                                                title="Sağa Döndür">
-                                                <i class="fas fa-redo"></i>
+                                            <button class="btn btn-sm btn-success mr-2" onclick="makeProfilePhoto(<?php echo $foto['ID']; ?>)"
+                                                title="Profil Fotoğrafı Yap">
+                                                <i class="fas fa-user-circle"></i>
                                             </button>
                                             <button class="btn btn-danger" onclick="deletePhoto(<?php echo $foto['ID']; ?>)"
                                                 title="Sil">
@@ -346,9 +342,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                             <!-- Fotoğraf önizlemeleri burada gösterilecek -->
                         </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer" style="background: white;">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                        <button type="submit" class="btn btn-success">Yükle</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload me-1"></i>Yükle
+                        </button>
                     </div>
                 </form>
             </div>
@@ -374,9 +372,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                             <!-- Fotoğraf önizlemeleri burada gösterilecek -->
                         </div>
                     </div>
-                    <div class="modal-footer sticky-bottom bg-white">
+                    <div class="modal-footer" style="background: white;">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                        <button type="submit" class="btn btn-success">Yükle</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload me-1"></i>Yükle
+                        </button>
                     </div>
                     <div style="height: 80px;"></div>
                 </form>
@@ -401,6 +401,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-danger" id="confirmDelete">
                         <i class="fas fa-trash-alt me-2"></i>Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profil Fotoğrafı Onay Modalı -->
+    <div class="modal fade" id="profilePhotoModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Profil Fotoğrafı</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Bu fotoğrafı profil fotoğrafı yapmak istediğinizden emin misiniz?</p>
+                    <div class="text-center mb-3">
+                        <img id="previewProfilePhoto" src="" alt="Profil Fotoğrafı" 
+                             style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success" id="confirmProfilePhoto">
+                        <i class="fas fa-check me-1"></i>Onayla
                     </button>
                 </div>
             </div>
@@ -594,6 +619,101 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photos'])) {
                     alert('Bir hata oluştu');
                 });
         }
+
+        // Profil fotoğrafı modal kontrolü
+        const profilePhotoModal = new bootstrap.Modal(document.getElementById('profilePhotoModal'));
+        let currentPhotoId = null;
+
+        function makeProfilePhoto(photoId) {
+            // Fotoğraf önizlemesini ayarla
+            const imgElement = document.querySelector(`[data-photo-id="${photoId}"]`);
+            const previewImg = document.getElementById('previewProfilePhoto');
+            previewImg.src = imgElement.src;
+            
+            // Fotoğraf ID'sini sakla
+            currentPhotoId = photoId;
+            
+            // Modalı göster
+            profilePhotoModal.show();
+        }
+
+        // Onay butonuna tıklandığında
+        document.getElementById('confirmProfilePhoto').addEventListener('click', function() {
+            const button = this;
+            const originalText = button.innerHTML;
+            
+            // Butonu devre dışı bırak ve yükleniyor göster
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>İşleniyor...';
+            
+            fetch('make_profile_photo.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    photo_id: currentPhotoId,
+                    patient_id: <?php echo $hasta_id; ?>
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Modalı kapat
+                    profilePhotoModal.hide();
+                    
+                    // Başarı mesajı göster
+                    showAlert('Profil fotoğrafı başarıyla güncellendi', 'success');
+                    
+                    // Sayfayı yenile
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || 'Bir hata oluştu');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Bir hata oluştu: ' + error.message, 'danger');
+                
+                // Butonu eski haline getir
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
+        });
+
+        // Fotoğraf yükleme formları için yükleme durumu kontrolü
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Yükle butonunu bul
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            
+            // Butonu devre dışı bırak ve yükleniyor göster
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Yükleniyor...';
+            
+            // Formu gönder
+            this.submit();
+        });
+
+        // Hızlı yükleme formu için de aynı işlemi yap
+        document.getElementById('quickUploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Yükle butonunu bul
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            
+            // Butonu devre dışı bırak ve yükleniyor göster
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Yükleniyor...';
+            
+            // Formu gönder
+            this.submit();
+        });
     </script>
 </body>
 

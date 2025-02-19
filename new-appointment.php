@@ -34,13 +34,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $tarih = $_POST['appointment_date'];
         $saat = $_POST['appointment_time'];
         $isRecurring = isset($_POST['is_recurring']) && $_POST['is_recurring'] == '1';
+        $note = isset($_POST['appointment_note']) ? trim($_POST['appointment_note']) : '';
         
-        if (createAppointment($db, $hastaId, $tarih, $saat, $isRecurring)) {
-            header('Location: appointments.php?message=created');
-            exit;
+        if ($isRecurring) {
+            if (createAppointment($db, $hastaId, $tarih, $saat, $isRecurring)) {
+                header('Location: appointments.php?message=created');
+                exit;
+            }
         } else {
-            throw new Exception("Randevu oluşturulurken bir hata oluştu.");
+            // Tekli randevu oluşturma
+          if(createAppointment($db, $hastaId, $tarih, $saat, $isRecurring, $note)){
+                header('Location: appointments.php?message=created');
+                exit;
+            }
+
         }
+        
+        throw new Exception("Randevu oluşturulurken bir hata oluştu.");
     } catch (Exception $e) {
         $error_messages[] = $e->getMessage();
     }
@@ -182,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <div class="mb-3">
                                 <label for="appointment_date" class="form-label">İşlem Tarihi</label>
                                 <input type="date" class="form-control" id="appointment_date" 
-                                       name="appointment_date" required min="<?php echo date('Y-m-d'); ?>"
+                                       name="appointment_date" required
                                        onchange="updatePreview()">
                             </div>
 
@@ -211,6 +221,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         Hayır
                                     </label>
                                 </div>
+                            </div>
+
+                            <!-- Not ekleme alanı -->
+                            <div class="mb-3" id="appointmentNoteSection">
+                                <label for="appointment_note" class="form-label">Randevu Notu</label>
+                                <textarea class="form-control" id="appointment_note" name="appointment_note" 
+                                          rows="3" placeholder="Randevu için not ekleyin..."></textarea>
                             </div>
                         </div>
 
@@ -268,7 +285,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                class="form-control form-control-sm appointment-date" 
                                name="appointment_dates[${index}]" 
                                value="${appointmentDate.toISOString().split('T')[0]}"
-                               min="${date}"
                                onchange="checkSunday(this)">
                         <select class="form-control form-control-sm appointment-time" 
                                 name="appointment_times[${index}]">
@@ -311,12 +327,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         function togglePreview() {
             const isRecurring = document.querySelector('input[name="is_recurring"]:checked').value === "1";
+            const noteSection = document.getElementById('appointmentNoteSection');
+            
             if (isRecurring) {
                 updatePreview();
+                noteSection.style.display = 'none';
             } else {
                 document.getElementById('previewContainer').style.display = 'none';
+                noteSection.style.display = 'block';
             }
         }
+
+        // Sayfa yüklendiğinde doğru görünümü ayarla
+        document.addEventListener('DOMContentLoaded', function() {
+            togglePreview();
+        });
     </script>
 </body>
 </html> 

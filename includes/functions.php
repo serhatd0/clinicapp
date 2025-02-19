@@ -173,7 +173,7 @@ function saveFormData($db, $data)
         )";
 
         $params = [
-            ':ad_soyad' => trim($data['fullName']),
+            ':ad_soyad' => mb_convert_case(trim($data['fullName']), MB_CASE_TITLE, "UTF-8"),
             ':kimlik_turu' => trim($data['idType']),
             ':kimlik_no' => trim($data['idNumber']),
             ':dogum_tarihi' => trim($data['birthDate']),
@@ -347,7 +347,7 @@ function updatePatient($db, $patientId, $data)
             WHERE ID = :id";
 
         $params = [
-            ':ad_soyad' => trim($data['fullName']),
+            ':ad_soyad' => mb_convert_case(trim($data['fullName']), MB_CASE_TITLE, "UTF-8"),
             ':kimlik_turu' => trim($data['idType']),
             ':kimlik_no' => trim($data['idNumber']),
             ':dogum_tarihi' => trim($data['birthDate']),
@@ -585,7 +585,7 @@ function createAppointmentSeries($db, $patientId, $startDate, $startTime)
     }
 }
 
-function createAppointment($db, $patientId, $date, $time, $isRecurring = false)
+function createAppointment($db, $patientId, $date, $time, $isRecurring = false, $note = '')
 {
     try {
         if ($isRecurring) {
@@ -598,18 +598,23 @@ function createAppointment($db, $patientId, $date, $time, $isRecurring = false)
                 HASTA_ID, 
                 TARIH, 
                 DURUM,
+                NOTLAR,
                 CREATED_AT
             ) VALUES (
                 :hasta_id,
                 :tarih,
                 'bekliyor',
+                :notlar,
                 NOW()
             )");
 
+
             return $stmt->execute([
                 ':hasta_id' => $patientId,
-                ':tarih' => $appointmentDateTime
+                ':tarih' => $appointmentDateTime,
+                ':notlar' => $note
             ]);
+
         }
     } catch (Exception $e) {
         error_log($e->getMessage());
